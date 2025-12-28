@@ -1,0 +1,107 @@
+---
+title: Sidecar Communication
+description: How handlers communicate with infrastructure via sidecars
+---
+
+Handlers access external infrastructure (databases, caches, queues) through HTTP calls to sidecar services. This keeps credentials out of WASM modules and enables policy enforcement.
+
+## Architecture
+
+```
+Handler (WASM) ──HTTP──> Sidecar (native) ──> Database
+```
+
+Sidecars are native processes that:
+- Hold database credentials securely
+- Translate HTTP requests to infrastructure protocols
+- Enforce rate limits, auth, and auditing
+- Can implement caching, retries, circuit breakers
+
+## Transport Options
+
+| Transport | Latency | Use Case |
+|-----------|---------|----------|
+| TCP HTTP | ~100-500μs | Remote sidecars, Kubernetes |
+| Unix Socket HTTP | ~50-150μs | Local sidecars, same machine |
+
+**For local deployments, use Unix sockets for ~2x lower latency** while keeping the same HTTP protocol.
+
+## Configuration
+
+```toml
+# Local deployment - use Unix sockets for speed
+[sidecars]
+db = "unix:///var/run/sidecars/db.sock"
+cache = "unix:///var/run/sidecars/cache.sock"
+queue = "unix:///var/run/sidecars/queue.sock"
+
+# Kubernetes/remote - use TCP
+[sidecars]
+db = "http://db-sidecar:8080"
+cache = "http://cache-sidecar:8080"
+queue = "http://queue-sidecar:8080"
+```
+
+## Calling Sidecars from Handlers
+
+Use the mik_sdk SDK's HTTP client:
+
+```rust
+use mik_sdk::http_client as client;
+
+// GET request
+let response = client::get("http://db-sidecar/users/123")?;
+let user = response.text();
+
+// POST with JSON
+let response = client::request()
+    .post("http://cache-sidecar/set")
+    .header("X-Cache-TTL", "3600")
+    .json(b"{\"key\": \"value\"}")
+    .send()?;
+```
+
+The sidecar URL comes from environment variables injected by the runtime.
+
+## Deployment Recommendations
+
+| Environment | Transport | Why |
+|-------------|-----------|-----|
+| Development | TCP (`localhost:8080`) | Simplicity, easy debugging |
+| Production (same host) | Unix sockets | ~2x lower latency |
+| Production (Kubernetes) | TCP to service | Cross-pod communication |
+
+## Why HTTP (not ZeroMQ or other IPC)?
+
+We evaluated faster alternatives:
+
+| Option | Latency | Trade-off |
+|--------|---------|-----------|
+| ZeroMQ | ~10-50μs | Requires ZMQ client in WASM, breaks handler portability |
+| Shared Memory | ~1-5μs | Complex, not WASM-friendly, security concerns |
+| gRPC | ~50-150μs | Heavy dependency, similar speed to Unix sockets |
+| Cap'n Proto | ~10-30μs | Niche ecosystem, breaks portability |
+
+**Key insight:** Actual work (DB queries, external APIs) dominates latency. Saving 50μs on transport doesn't matter when the DB query takes 5ms.
+
+## Benefits of HTTP
+
+Unix sockets with HTTP preserve:
+
+- **Handler portability** - Standard HTTP works on any WASI Preview 2 runtime
+- **Debuggability** - Test with `curl --unix-socket /path/to/sock http://localhost/endpoint`
+- **Observability** - Standard HTTP logging, tracing, and metrics
+- **Simplicity** - No special client libraries needed in WASM
+
+## Example: Database Sidecar
+
+A typical database sidecar exposes a REST API:
+
+```
+GET  /users/:id       → SELECT * FROM users WHERE id = ?
+POST /users           → INSERT INTO users ...
+PUT  /users/:id       → UPDATE users SET ... WHERE id = ?
+DELETE /users/:id     → DELETE FROM users WHERE id = ?
+```
+
+The sidecar holds the connection pool and credentials. Handlers only see HTTP.

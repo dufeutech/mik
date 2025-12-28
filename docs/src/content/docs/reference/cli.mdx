@@ -1,0 +1,371 @@
+---
+title: CLI Reference
+description: mik command line interface reference
+---
+
+The `mik` CLI provides commands for creating, building, and running WASI HTTP projects. It includes an embedded runtime, so you only need one binary.
+
+## Installation
+
+```bash
+cargo install mik
+```
+
+## Commands
+
+### mik new
+
+Create a new mik project with all required files.
+
+```bash
+mik new <NAME> [OPTIONS]
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--lib` | Initialize as a library (default: handler) |
+
+**Example:**
+```bash
+mik new my-api
+cd my-api
+mik build -rc
+mik run
+```
+
+**Generated structure:**
+```
+my-api/
+├── Cargo.toml          # Component package
+├── mik.toml            # Project config
+├── wit/
+│   ├── world.wit       # WIT world definition
+│   └── deps/core/      # Core handler interface
+├── src/
+│   └── lib.rs          # Handler implementation
+├── modules/            # Dependencies directory
+└── .gitignore
+```
+
+---
+
+### mik build
+
+Build the WASM handler and optionally compose with bridge.
+
+```bash
+mik build [OPTIONS]
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `-r, --release` | Build with optimizations |
+| `-c, --compose` | Compose with HTTP bridge |
+
+**Examples:**
+```bash
+# Debug build
+mik build
+
+# Release build
+mik build -r
+
+# Release build + compose with bridge
+mik build -rc
+```
+
+**Output:**
+- `target/wasm32-wasip2/release/<name>.wasm` - Compiled handler
+- `dist/<name>-composed.wasm` - Composed component (with `-c`)
+
+---
+
+### mik run
+
+Start the HTTP server with the embedded runtime.
+
+```bash
+mik run [COMPONENT] [OPTIONS]
+```
+
+**Arguments:**
+| Argument | Description |
+|----------|-------------|
+| `COMPONENT` | Optional path to a .wasm file |
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--port <PORT>` | Server port (default: 3000) |
+| `--workers <N>` | Number of worker processes (0 = auto) |
+
+**Modes:**
+
+All modes use consistent `/run/<module>/*` routing.
+
+**Multi-module mode** (default):
+```bash
+mik run
+```
+- Uses `[server].modules` directory from mik.toml
+- Routes: `/run/<module>/*` -> `modules/<module>.wasm`
+
+**Single component mode**:
+```bash
+mik run dist/my-api-composed.wasm
+```
+- Routes: `/run/<name>/*` -> component (name from filename)
+
+**Multi-worker mode**:
+```bash
+mik run --workers 4    # 4 workers on ports 3000-3003
+mik run --workers 0    # Auto-detect (one per CPU core)
+```
+
+**Example output:**
+```
+Starting server on http://127.0.0.1:3000
+Routes: /run/my-api/* -> component
+Health: /health
+Metrics: /metrics
+```
+
+**Built-in endpoints:**
+| Endpoint | Description |
+|----------|-------------|
+| `/health` | Health check |
+| `/metrics` | Prometheus metrics |
+| `/static/*` | Static files (if configured) |
+
+---
+
+### mik add
+
+Add a dependency to the project.
+
+```bash
+mik add <PACKAGE> [OPTIONS]
+```
+
+**Package formats:**
+```
+user/repo              # OCI: ghcr.io/user/repo:latest
+user/repo:tag          # OCI: ghcr.io/user/repo:tag
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--git <URL>` | Git repository URL |
+| `--path <PATH>` | Local path |
+| `--tag <TAG>` | OCI/Git tag |
+| `--branch <BRANCH>` | Git branch |
+
+**Examples:**
+```bash
+# Add from OCI registry
+mik add dufeut/router
+
+# Add with specific version
+mik add dufeut/router:v1.0.0
+
+# Add from git
+mik add my-component --git "https://github.com/user/repo.git"
+
+# Add local dependency
+mik add my-handler --path "../my-handler"
+```
+
+---
+
+### mik remove
+
+Remove a dependency from the project.
+
+```bash
+mik remove <PACKAGE>
+```
+
+---
+
+### mik sync
+
+Synchronize dependencies from registries.
+
+```bash
+mik sync
+```
+
+Downloads missing dependencies and removes stale modules from `modules/`.
+
+**When to use:**
+- After `git clone` to download all dependencies
+- After switching branches
+- To clean up unused modules
+
+---
+
+### mik publish
+
+Publish component to GitHub Releases.
+
+```bash
+mik publish [OPTIONS]
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--tag <TAG>` | Git tag for the release |
+| `--dry-run` | Simulate without publishing |
+
+---
+
+### mik cache
+
+Manage the AOT compilation cache.
+
+```bash
+mik cache <SUBCOMMAND>
+```
+
+**Subcommands:**
+| Command | Description |
+|---------|-------------|
+| `info` | Show cache statistics |
+| `clean` | Remove stale entries |
+| `clear` | Clear all cached data |
+
+---
+
+## Daemon Commands
+
+The daemon provides instance management and embedded services.
+
+### mik daemon
+
+Start the daemon HTTP API server.
+
+```bash
+mik daemon [OPTIONS]
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--port <PORT>` | API port (default: 9999) |
+
+The daemon exposes:
+- Instance management: `/instances/*`
+- KV store: `/kv/*`
+- SQL database: `/sql/*`
+- Object storage: `/storage/*`
+- Message queues: `/queues/*`
+- Cron scheduler: `/cron/*`
+- Prometheus metrics: `/metrics`
+
+---
+
+### mik up
+
+Start a WASM instance in the background.
+
+```bash
+mik up [OPTIONS]
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--name <NAME>` | Instance name (default: "default") |
+| `--port <PORT>` | Server port (default: 3000) |
+| `--watch` | Enable hot reload |
+
+---
+
+### mik down
+
+Stop a running instance.
+
+```bash
+mik down [NAME]
+```
+
+---
+
+### mik ps
+
+List all instances.
+
+```bash
+mik ps
+```
+
+**Example output:**
+```
+NAME         PORT   PID      STATUS     UPTIME
+────────────────────────────────────────────────────────
+default      3000   12345    running    2h 15m
+dev          3001   12346    running    45m
+```
+
+---
+
+### mik logs
+
+View instance logs.
+
+```bash
+mik logs [NAME] [OPTIONS]
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `-f, --follow` | Follow log output |
+| `-n, --lines <N>` | Number of lines (default: 50) |
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `PORT` | Override server port |
+| `HOST` | Bind address (default: 127.0.0.1) |
+| `RUST_LOG` | Log level (error, warn, info, debug, trace) |
+| `MIK_HOT_RELOAD` | Enable hot reload mode |
+
+---
+
+## Workflow Example
+
+Complete workflow for a new project:
+
+```bash
+# 1. Create project
+mik new my-api
+cd my-api
+
+# 2. Build with composition
+mik build -rc
+
+# 3. Run the server
+mik run
+
+# 4. Test
+curl http://localhost:3000/health
+curl http://localhost:3000/run/my-api/
+```
+
+After cloning an existing project:
+
+```bash
+git clone https://github.com/user/my-api.git
+cd my-api
+mik sync        # Download all dependencies
+mik build -rc
+mik run
+```

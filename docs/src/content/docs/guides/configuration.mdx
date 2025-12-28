@@ -1,0 +1,247 @@
+---
+title: Configuration
+description: Complete mik.toml configuration reference
+---
+
+mik is configured via `mik.toml` in your project root.
+
+## Full Example
+
+```toml
+[project]
+name = "my-service"
+version = "0.1.0"
+description = "My WASI HTTP service"
+type = "app"              # "app" or "lib"
+backend = "2"             # WASI Preview 2
+
+[server]
+port = 3000
+modules = "modules/"
+scripts = "scripts/"      # Optional: JS orchestration
+static = "static/"        # Optional: static files
+cache_size = 100
+http_allowed = ["api.example.com", "*.supabase.co"]
+
+[composition]
+http_handler = true       # Auto-downloads bridge from ghcr.io/dufeut/mik-sdk-bridge
+
+[dependencies]
+# OCI registry (ghcr.io is default)
+"dufeut/router" = "latest"
+"dufeut/auth" = "v1.0.0"
+
+# Local path
+utils = { path = "../utils" }
+```
+
+## [project] Section
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | required | Project name (used for WASM output) |
+| `version` | string | `"0.1.0"` | Semantic version |
+| `description` | string | - | Project description |
+| `type` | string | `"app"` | `"app"` (HTTP handler) or `"lib"` (reusable) |
+| `backend` | string | `"2"` | WASI version (`"1"` or `"2"`) |
+
+## [server] Section
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `port` | number | `3000` | HTTP server port |
+| `modules` | string | `"modules/"` | WASM handlers directory |
+| `scripts` | string | - | JS/TS scripts directory (enables orchestration) |
+| `static` | string | - | Static files directory |
+| `cache_size` | number | `100` | Max cached modules |
+| `http_allowed` | array | `[]` | Allowed outgoing HTTP hosts |
+
+### http_allowed Patterns
+
+```toml
+# Disable outgoing HTTP (default)
+http_allowed = []
+
+# Allow all hosts
+http_allowed = ["*"]
+
+# Specific hosts
+http_allowed = ["api.example.com"]
+
+# Wildcard subdomains
+http_allowed = ["*.supabase.co"]
+
+# Multiple patterns
+http_allowed = ["api.example.com", "*.supabase.co", "github.com"]
+```
+
+## [composition] Section
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `http_handler` | boolean | `false` | Auto-download and compose with HTTP bridge |
+
+When `http_handler = true`, `mik build -c` automatically:
+1. Downloads the bridge from `ghcr.io/dufeut/mik-sdk-bridge`
+2. Composes your handler with the bridge using WAC
+
+## [dependencies] Section
+
+Dependencies are pulled from OCI registries (ghcr.io by default).
+
+### Simple Format (OCI)
+
+```toml
+[dependencies]
+# Format: "user/repo" = "version"
+# Resolves to: ghcr.io/user/repo:version
+
+"dufeut/router" = "latest"
+"dufeut/auth" = "v1.0.0"
+"myorg/utils" = "v2.0"
+```
+
+### Extended Formats
+
+```toml
+[dependencies]
+# Custom registry (requires both registry AND version)
+db = { registry = "ghcr.io/myorg/database", version = "v1.0" }
+cache = { registry = "docker.io/myorg/cache", version = "latest" }
+
+# Git repository
+router = { git = "https://github.com/user/repo.git" }
+router-branch = { git = "https://github.com/user/repo.git", branch = "main" }
+router-tag = { git = "https://github.com/user/repo.git", tag = "v1.0.0" }
+
+# Local path (for development)
+local = { path = "../component.wasm" }
+utils = { path = "../my-utils" }
+```
+
+### Adding Dependencies
+
+```bash
+# Add from OCI (requires user/repo format)
+mik add dufeut/router
+mik add dufeut/router:v1.0.0
+
+# Add from git
+mik add mylib --git "https://github.com/user/repo.git"
+
+# Add local path
+mik add utils --path "../utils"
+```
+
+## Runtime Configuration
+
+Advanced runtime settings for `mik run`:
+
+```toml
+[server]
+# Request limits
+execution_timeout_secs = 30       # Max handler execution time
+max_concurrent_requests = 1000    # Global request limit
+max_per_module_requests = 10      # Per-handler limit
+max_body_size_mb = 10             # Max request body size
+
+# Cache settings
+cache_size = 100                  # Max cached modules
+max_cache_mb = 256                # Cache memory limit
+```
+
+## [tracing] Section
+
+OpenTelemetry tracing configuration:
+
+```toml
+[tracing]
+service_name = "my-service"
+otlp_endpoint = "http://localhost:4317"  # Jaeger, Tempo, etc.
+```
+
+## Environment Variables
+
+Override settings via environment:
+
+```bash
+# Override port
+PORT=8080 mik run
+
+# Override bind address (for Docker)
+HOST=0.0.0.0 mik run
+
+# Enable debug logging
+RUST_LOG=debug mik run
+
+# Enable hot reload mode
+MIK_HOT_RELOAD=1 mik run
+```
+
+## Example Configurations
+
+### Minimal
+
+```toml
+[project]
+name = "api"
+version = "0.1.0"
+
+[server]
+port = 3000
+
+[composition]
+http_handler = true
+```
+
+### With Dependencies
+
+```toml
+[project]
+name = "api"
+version = "0.1.0"
+
+[server]
+port = 3000
+modules = "modules/"
+
+[composition]
+http_handler = true
+
+[dependencies]
+"dufeut/router" = "latest"
+"dufeut/auth" = "v1.0.0"
+```
+
+### Full Production
+
+```toml
+[project]
+name = "production-api"
+version = "1.0.0"
+description = "Production API service"
+
+[server]
+port = 8080
+modules = "modules/"
+scripts = "scripts/"
+static = "public/"
+cache_size = 100
+max_cache_mb = 512
+execution_timeout_secs = 30
+max_concurrent_requests = 2000
+max_per_module_requests = 50
+http_allowed = ["*.internal.example.com"]
+
+[composition]
+http_handler = true
+
+[tracing]
+service_name = "production-api"
+otlp_endpoint = "http://tempo:4317"
+
+[dependencies]
+"myorg/router" = "v2.0.0"
+"myorg/auth" = "v1.5.0"
+utils = { path = "../shared-utils" }
+```

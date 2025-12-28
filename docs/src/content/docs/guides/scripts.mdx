@@ -1,0 +1,220 @@
+---
+title: Scripts & Orchestration
+description: JavaScript orchestration for composing WASM handlers
+---
+
+
+mik supports JavaScript/TypeScript orchestration scripts that compose multiple WASM handlers into single endpoints.
+
+## Why Scripts?
+
+- **Non-Rust developers** can write orchestration logic in JS/TS
+- **Multi-tenant scenarios** - users can write custom business logic
+- **Composable** - call multiple WASM handlers in sequence or parallel
+- **Disposable** - easily update orchestration without recompiling Rust
+
+## Directory Structure
+
+```
+project/
+├── modules/           # WASM handlers
+│   ├── auth.wasm
+│   ├── orders.wasm
+│   └── inventory.wasm
+├── scripts/           # JS/TS orchestration
+│   ├── checkout.ts
+│   └── checkout.test.ts
+└── mik.toml
+```
+
+## Configuration
+
+Enable scripts in `mik.toml`:
+
+```toml
+[server]
+modules = "modules/"
+scripts = "scripts/"
+```
+
+## Writing Scripts
+
+### Basic Script
+
+```typescript
+// scripts/checkout.ts
+import { script, ok, error } from "mik-sdk";
+
+export default script(async (req, host) => {
+  // Call auth handler
+  const auth = await host.call("auth", {
+    method: "POST",
+    body: { token: req.body.token }
+  });
+
+  if (auth.status !== 200) {
+    return error({ status: 401, title: "Unauthorized" });
+  }
+
+  // Call orders handler
+  const order = await host.call("orders", {
+    method: "POST",
+    body: { user: auth.body.id, items: req.body.items }
+  });
+
+  return ok(order.body);
+});
+```
+
+### Parallel Calls
+
+```typescript
+import { script, ok } from "mik-sdk";
+
+export default script(async (req, host) => {
+  // Call multiple handlers in parallel
+  const [inventory, pricing] = await Promise.all([
+    host.call("inventory", { body: { sku: req.body.sku } }),
+    host.call("pricing", { body: { sku: req.body.sku } })
+  ]);
+
+  return ok({
+    available: inventory.body.quantity > 0,
+    price: pricing.body.price
+  });
+});
+```
+
+### Error Handling
+
+```typescript
+import { script, ok, error } from "mik-sdk";
+
+export default script(async (req, host) => {
+  try {
+    const result = await host.call("auth", { body: req.body });
+    return ok(result.body);
+  } catch (e) {
+    switch (e.code) {
+      case "CIRCUIT_OPEN":
+        return error({ status: 503, title: "Service Unavailable" });
+      case "TIMEOUT":
+        return error({ status: 504, title: "Gateway Timeout" });
+      case "MODULE_NOT_FOUND":
+        return error({ status: 502, title: "Bad Gateway" });
+      default:
+        return error({ status: 500, title: "Internal Error" });
+    }
+  }
+});
+```
+
+## How Scripts Work
+
+Scripts are executed using the embedded rquickjs runtime (QuickJS). No external tools are required - just write JavaScript files:
+
+```bash
+# Enable scripts in mik.toml
+[server]
+scripts = "scripts/"
+
+# Scripts are loaded automatically at runtime
+mik run
+```
+
+### Requirements
+
+- Just JavaScript files (`.js`) in your scripts directory
+- TypeScript users can compile with `tsc` first (`npm install -g typescript`)
+
+No external tooling. `mik` embeds the JavaScript runtime directly.
+
+## Routing
+
+Scripts are available at `/script/{name}`:
+
+```bash
+# Call the checkout script
+curl -X POST http://localhost:3000/script/checkout \
+  -H "Content-Type: application/json" \
+  -d '{"token": "abc", "items": [{"sku": "123"}]}'
+```
+
+## API Reference
+
+### Request Object
+
+```typescript
+interface Request {
+  method: string;      // GET, POST, PUT, DELETE, etc.
+  path: string;        // Request path
+  headers: Record<string, string>;
+  query: Record<string, string>;
+  body: any;           // Parsed JSON body
+}
+```
+
+### Host Object
+
+```typescript
+interface Host {
+  call(handler: string, options?: {
+    method?: string;   // Default: GET
+    path?: string;     // Default: /
+    headers?: Record<string, string>;
+    body?: any;
+  }): Promise<Response>;
+}
+```
+
+### Response Helpers
+
+```typescript
+// Success response (status: 200)
+ok({ data: "value" })
+
+// Error response (RFC 7807)
+error({
+  status: 400,
+  title: "Bad Request",
+  detail: "Missing required field"
+})
+```
+
+### Error Codes
+
+| Code | Description |
+|------|-------------|
+| `MODULE_NOT_FOUND` | Handler doesn't exist |
+| `CIRCUIT_OPEN` | Circuit breaker is open |
+| `RATE_LIMITED` | Too many requests |
+| `TIMEOUT` | Execution timeout |
+| `HANDLER_ERROR` | Handler returned error |
+
+## Testing Scripts
+
+```typescript
+// scripts/checkout.test.ts
+import { createTestHost, createTestRequest } from "mik-sdk/testing";
+import checkout from "./checkout";
+
+test("creates order", async () => {
+  const host = createTestHost({
+    "auth": async () => ({ status: 200, body: { id: "user-1" } }),
+    "orders": async () => ({ status: 201, body: { orderId: "123" } }),
+  });
+
+  const req = createTestRequest({ body: { token: "valid", items: [] } });
+  const res = await checkout(req, host);
+
+  expect(res.status).toBe(201);
+});
+```
+
+## Best Practices
+
+1. **Keep scripts simple** - Complex logic should be in WASM handlers
+2. **Use parallel calls** - `Promise.all` for independent operations
+3. **Handle errors** - Always catch and return proper error responses
+4. **Test scripts** - Use mock hosts in unit tests
+5. **Skip test files** - Files with `.test.` or `.spec.` are not compiled

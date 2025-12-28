@@ -1,0 +1,137 @@
+---
+title: Architecture
+description: System overview and request flow
+---
+
+mik is a WASI HTTP runtime with JavaScript orchestration capabilities, packaged as a single CLI.
+
+## System Overview
+
+```mermaid
+flowchart TB
+    subgraph CLI["mik CLI"]
+        subgraph Core["Core Components"]
+            HTTP["HTTP Server<br/>(hyper)"]
+            Wasmtime["Wasmtime<br/>Engine"]
+            Scripts["Script Runner<br/>(rquickjs)"]
+        end
+
+        subgraph Reliability["Reliability Layer"]
+            Cache["LRU Cache<br/>(moka)"]
+            CB["Circuit Breaker<br/>(per-module)"]
+            RL["Rate Limiter<br/>(global+per-mod)"]
+        end
+
+        HTTP --> Wasmtime
+        Wasmtime --> Scripts
+        Core --> Reliability
+    end
+
+    CLI --> Auth["auth.wasm<br/>(handler)"]
+    CLI --> Orders["orders.wasm<br/>(handler)"]
+    CLI --> Checkout["checkout.js<br/>(script)"]
+```
+
+## Components
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| HTTP Server | hyper 1.x | Async HTTP/1.1, graceful shutdown |
+| WASM Runtime | wasmtime 40 | WASI Preview 2 execution |
+| Script Runner | rquickjs | JavaScript orchestration |
+| Cache | moka | LRU module caching |
+| Circuit Breaker | custom | Failure isolation |
+| Rate Limiter | governor | Request throttling |
+
+## Request Flow
+
+### WASM Handler
+
+```mermaid
+flowchart TD
+    A[HTTP Request] --> B{Route Match}
+    B -->|/run/module/*| C[Rate Limit Check]
+    C -->|OK| D[Circuit Breaker Check]
+    C -->|Exceeded| X1[429 Too Many Requests]
+    D -->|OPEN| X2[503 Service Unavailable]
+    D -->|OK| E{Cache Lookup}
+    E -->|Hit| F[Execute WASI Component]
+    E -->|Miss| G[Compile Module]
+    G --> H[Store in Cache]
+    H --> F
+    F --> I[HTTP Response]
+```
+
+### Script (Orchestration)
+
+```mermaid
+flowchart TD
+    A[HTTP Request] --> B{Route Match}
+    B -->|/script/name/*| C[Execute Script]
+    C --> D["host.call(handler, request)"]
+    D --> E[Host Executes Handler]
+    E --> F[Response to Script]
+    F --> G[Script Processes Response]
+    G --> H[Final HTTP Response]
+```
+
+## Module Loading
+
+```mermaid
+flowchart TB
+    subgraph Cache["LRU Cache"]
+        M1["auth.wasm<br/>(compiled)"]
+        M2["orders.wasm<br/>(compiled)"]
+        M3["users.wasm<br/>(compiled)"]
+    end
+
+    Request[Request for Module] --> Check{Cache Hit?}
+    Check -->|Yes| Return[Return Cached Instance]
+    Check -->|No| Read[Read .wasm from disk]
+    Read --> Compile[Compile with wasmtime]
+    Compile --> Store[Store in Cache]
+    Store --> Return
+```
+
+## Circuit Breaker
+
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> OPEN: failures >= 5
+    OPEN --> HALF_OPEN: 30s timeout
+    HALF_OPEN --> CLOSED: test success
+    HALF_OPEN --> OPEN: test failure
+    CLOSED --> CLOSED: success
+```
+
+## Routing
+
+All handler routes use `/run/<module>/*` pattern:
+
+| Route | Handler |
+|-------|---------|
+| `/run/auth/*` | `modules/auth.wasm` |
+| `/run/users/*` | `modules/users.wasm` |
+| `/script/checkout/*` | `scripts/checkout.js` |
+| `/health` | Built-in health check |
+| `/metrics` | Prometheus metrics |
+
+## Project Structure
+
+```
+mik/
+├── src/
+│   ├── commands/         # CLI commands (new, build, run, etc.)
+│   ├── runtime/          # WASM runtime, AOT cache
+│   ├── daemon/           # Background services (KV, SQL, etc.)
+│   └── manifest.rs       # mik.toml parsing
+├── docs/                 # Documentation (Astro)
+└── examples/             # Example projects
+```
+
+## Related Pages
+
+- [Sidecar Communication](/reference/sidecars) - How handlers talk to infrastructure
+- [Security Model](/reference/security) - Capability-based security
+- [Reliability Features](/guides/reliability) - Circuit breakers, rate limiting
