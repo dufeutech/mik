@@ -1,0 +1,186 @@
+[package]
+name = "mik"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+description = "CLI for mik-sdk WASI HTTP components"
+rust-version = "1.89"
+repository = "https://github.com/dufeut/mik"
+homepage = "https://github.com/dufeut/mik"
+documentation = "https://docs.rs/mik"
+authors = ["mik contributors"]
+keywords = ["wasm", "wasi", "http", "cli", "webassembly"]
+categories = ["command-line-utilities", "wasm"]
+readme = "README.md"
+
+[[bin]]
+name = "mik"
+path = "src/main.rs"
+
+[lib]
+name = "mik"
+path = "src/lib.rs"
+
+[features]
+default = ["registry", "otlp"]
+# Registry features (git + OCI) - optional for minimal Docker builds
+registry = ["dep:git2", "dep:oci-client", "dep:ureq"]
+# OpenTelemetry OTLP export for distributed tracing (Jaeger, Tempo, etc.)
+# Enabled by default for production observability
+otlp = [
+    "dep:opentelemetry",
+    "dep:opentelemetry_sdk",
+    "dep:opentelemetry-otlp",
+    "dep:tracing-opentelemetry",
+]
+
+[dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+anyhow = "1.0"
+thiserror = "2"
+
+# Serialization
+toml = "0.9"
+serde = { version = "1.0", features = ["derive", "std"] }
+serde_json = "1.0"
+
+# Validation
+semver = "1.0"
+url = "2.5"
+
+# HTTP client for GitHub releases (optional - registry feature)
+ureq = { version = "3", features = ["json", "gzip"], optional = true }
+
+# Tar archive creation (used in build for packaging)
+tar = "0.4"
+
+# OCI registry client (optional - registry feature)
+oci-client = { version = "0.15", optional = true }
+
+# File system
+dirs = "6.0"
+glob = "0.3"
+tempfile = "3.24"
+
+# Git operations (optional - registry feature)
+git2 = { version = "0.20", optional = true }
+
+# Progress indicators
+indicatif = "0.18"
+
+# Fast allocator for musl builds (fixes multi-core performance)
+mimalloc = { version = "0.1", default-features = false }
+
+# Reliability primitives (retry with backoff)
+backon = "1"
+
+# === Runtime dependencies (for mik serve) ===
+
+# Wasmtime runtime
+wasmtime = { version = "40", features = ["component-model", "async", "cache"] }
+wasmtime-wasi = "40"
+wasmtime-wasi-http = "40"
+
+# WASM manipulation (for stripping components)
+
+# HTTP server
+hyper = { version = "1.5", features = ["server", "http1", "http2"] }
+hyper-util = { version = "0.1", features = [
+    "tokio",
+    "server",
+    "http1",
+    "http2",
+] }
+http-body-util = "0.1"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Rate limiting
+governor = "0.10"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# OpenTelemetry (optional - otlp feature)
+opentelemetry = { version = "0.31", optional = true }
+opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"], optional = true }
+opentelemetry-otlp = { version = "0.31", features = ["grpc-tonic"], optional = true }
+tracing-opentelemetry = { version = "0.32", optional = true }
+
+# Caching
+moka = { version = "0.12", features = ["sync"] }
+parking_lot = "0.12"
+
+# Content-addressable hashing for AOT cache
+blake3 = "1"
+hex = "0.4"
+
+# Utilities
+uuid = { version = "1.11", features = ["v4", "fast-rng"] }
+chrono = { version = "0.4", features = ["serde"] }
+mime_guess = "2.0"
+percent-encoding = "2.3"
+futures = "0.3"
+bytes = "1.5"
+flate2 = "1.0"
+async-compression = { version = "0.4", features = ["gzip", "tokio"] }
+
+# JavaScript runtime for orchestration scripts
+rquickjs = { version = "0.11", features = ["classes"] }
+
+# === Daemon dependencies (for mik api/up/down/ps) ===
+
+# Embedded databases
+redb = "3.1"                                            # KV store + state persistence
+rusqlite = { version = "0.38", features = ["bundled"] } # Embedded SQL database
+
+# Daemon features
+tokio-cron-scheduler = "0.15" # Cron job scheduling
+notify = { version = "8.2", default-features = false, features = [
+    "macos_kqueue",
+] } # Hot reload file watching
+sysinfo = "0.37" # Process info for mik ps
+
+# Prometheus metrics (without push-gateway to avoid aws-lc-sys/NASM on Windows)
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.18", default-features = false, features = [
+    "http-listener",
+] }
+
+# HTTP API (daemon)
+axum = "0.8"
+reqwest = { version = "0.12.28", features = ["rustls-tls"] }
+
+# Platform-specific dependencies
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.30", features = ["signal", "process"] } # Unix signal handling
+
+[dev-dependencies]
+hyper = { version = "1.5", features = ["client"] }
+tower = { version = "0.5", features = ["util"] }
+axum-test-helpers = { package = "axum-test-helper", version = "0.4" }
+serial_test = "3"
+proptest = "1.5"
+criterion = { version = "0.8", features = ["html_reports"] }
+
+# =============================================================================
+# Benchmarks
+# =============================================================================
+
+[[bench]]
+name = "runtime_benchmarks"
+harness = false
+
+# =============================================================================
+# Release Profile - Optimized for production
+# =============================================================================
+
+[profile.release]
+lto = true           # Link-time optimization for smaller, faster binaries
+opt-level = 3        # Maximum optimization
+codegen-units = 1    # Better optimization at cost of compile time
+strip = true         # Strip symbols for smaller binary
+panic = "abort"      # No unwinding for CLI tool
