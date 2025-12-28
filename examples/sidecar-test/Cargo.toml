@@ -1,0 +1,28 @@
+[package]
+name = "sidecar-test"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen-rt = "0.44.0"
+mik-sdk = { git = "https://github.com/dufeut/mik-sdk", default-features = false }
+
+[package.metadata.component]
+package = "mik:sidecar-test"
+
+[package.metadata.component.target]
+path = "wit"
+world = "sidecar-test"
+
+[package.metadata.component.target.dependencies]
+"mik:core" = { path = "wit/deps/core" }
+"wasi:cli" = { path = "wit/deps/cli" }
+"wasi:clocks" = { path = "wit/deps/clocks" }
+"wasi:io" = { path = "wit/deps/io" }
+"wasi:random" = { path = "wit/deps/random" }
+"wasi:filesystem" = { path = "wit/deps/filesystem" }
+"wasi:sockets" = { path = "wit/deps/sockets" }
+"wasi:http" = { path = "wit/deps/wasi-http" }

@@ -1,0 +1,15 @@
+package mik:sidecar-test@0.1.0;
+
+world sidecar-test {
+    // WASI imports (for time/random access)
+    import wasi:clocks/wall-clock@0.2.0;
+    import wasi:random/random@0.2.0;
+    import wasi:cli/environment@0.2.0;
+    import wasi:cli/stderr@0.2.0;
+
+    // WASI HTTP for outbound sidecar calls
+    import wasi:http/outgoing-handler@0.2.0;
+
+    // Export the handler
+    export mik:core/handler@0.1.0;
+}

@@ -1,0 +1,48 @@
+package mik:core@0.2.0;
+
+// =============================================================================
+// HTTP Module - Request data record, response builders
+// =============================================================================
+
+interface http {
+    /// HTTP methods.
+    enum method {
+        %get,
+        %post,
+        %put,
+        %patch,
+        %delete,
+        %head,
+        %options,
+    }
+
+    /// Raw HTTP request data from the bridge.
+    record request-data {
+        /// HTTP method.
+        method: method,
+        /// Full request path (e.g., "/users/123?page=1").
+        path: string,
+        /// HTTP headers as name-value pairs.
+        headers: list<tuple<string, string>>,
+        /// Request body bytes (if any).
+        body: option<list<u8>>,
+    }
+
+    /// HTTP response.
+    record response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: option<list<u8>>,
+    }
+}
+
+// =============================================================================
+// Handler Interface - What users export
+// =============================================================================
+
+interface handler {
+    use http.{request-data, response};
+
+    /// Process an HTTP request and return a response.
+    handle: func(req: request-data) -> response;
+}
