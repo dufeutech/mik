@@ -1,9 +1,12 @@
 # JavaScript/Node
 node_modules/
+package.json
+package-lock.json
 *.wasm
-!dist/*.wasm
+
+# WASI HTTP WIT (cloned)
+wasi-http/
+wit/
 
 # Build artifacts
 dist/
-wasi-http/
-wit/deps/
