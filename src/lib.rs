@@ -124,9 +124,9 @@ pub mod constants;
 /// Configuration types for the mik runtime.
 ///
 /// This module provides configuration structs for:
-/// - High-performance server settings ([`HighPerformanceServerConfig`])
-/// - Performance tuning options ([`PerformanceConfig`])
-/// - Resource limits ([`LimitsConfig`])
+/// - Server settings ([`config::ServerConfig`])
+/// - Package metadata ([`config::Package`])
+/// - Route definitions ([`config::RouteConfig`])
 ///
 /// All configuration types support serde for TOML parsing and provide
 /// sensible defaults suitable for development use.
@@ -134,11 +134,19 @@ pub mod constants;
 /// # Example
 ///
 /// ```
-/// use mik::config::{HighPerformanceServerConfig, ConfigError};
+/// use mik::config::Config;
 ///
-/// let config = HighPerformanceServerConfig::default();
+/// let toml = r#"
+/// [package]
+/// name = "my-service"
+/// version = "0.1.0"
+///
+/// [server]
+/// port = 3000
+/// "#;
+///
+/// let config: Config = toml::from_str(toml).unwrap();
 /// assert!(config.validate().is_ok());
-/// assert_eq!(config.port, 3000);
 /// ```
 pub mod config;
 
