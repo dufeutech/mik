@@ -50,8 +50,7 @@ pub use metrics::LbMetrics;
 pub use proxy::ProxyService;
 #[allow(unused_imports)]
 pub use reload::{ReloadConfig, ReloadHandle, ReloadManager, ReloadResult, ReloadSignal};
-#[allow(unused_imports)]
-pub use selection::{ConsistentHash, KeyExtractor, RoundRobin};
+pub use selection::RoundRobin;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
