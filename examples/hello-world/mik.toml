@@ -1,0 +1,40 @@
+[project]
+name = "hello-world"
+version = "0.1.0"
+backend = "2"
+description = "A WASI HTTP app"
+license = "MIT"
+keywords = []
+type = "app"
+
+[[project.authors]]
+name = "hlop3z"
+email = "23062270+hlop3z@users.noreply.github.com"
+
+[features]
+default = []
+
+[server]
+auto = true
+port = 3000
+modules = "modules/"
+cache_size = 0
+max_cache_mb = 0
+max_body_size_mb = 10
+execution_timeout_secs = 30
+max_concurrent_requests = 0
+max_per_module_requests = 0
+shutdown_timeout_secs = 30
+logging = false
+http_allowed = []
+
+[tracing]
+enabled = true
+service_name = "mik"
+
+[composition]
+http_handler = true
+
+[dependencies]
+
+[dev-dependencies]

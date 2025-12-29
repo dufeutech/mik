@@ -1,0 +1,33 @@
+package mik:core@0.1.0;
+
+/// Minimal handler interface - all types inline.
+interface handler {
+    /// HTTP methods.
+    enum method {
+        %get,
+        %post,
+        %put,
+        %patch,
+        %delete,
+        %head,
+        %options,
+    }
+
+    /// HTTP request data from the bridge.
+    record request-data {
+        method: method,
+        path: string,
+        headers: list<tuple<string, string>>,
+        body: option<list<u8>>,
+    }
+
+    /// HTTP response.
+    record response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: option<list<u8>>,
+    }
+
+    /// Process an HTTP request and return a response.
+    handle: func(req: request-data) -> response;
+}

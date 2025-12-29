@@ -1,0 +1,21 @@
+[package]
+name = "hello-world"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen-rt = "0.44.0"
+mik-sdk = { git = "https://github.com/dufeut/mik-sdk", default-features = false }
+
+[package.metadata.component]
+package = "mik:hello-world"
+
+[package.metadata.component.target]
+path = "wit"
+world = "hello-world"
+
+[package.metadata.component.target.dependencies]
+"mik:core" = { path = "wit/deps/core" }

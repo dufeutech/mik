@@ -1,0 +1,6 @@
+package mik:hello-world@0.1.0;
+
+world hello-world {
+    // Export the handler
+    export mik:core/handler@0.1.0;
+}
