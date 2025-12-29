@@ -61,17 +61,34 @@ pub async fn execute(
         return run_single_instance(component_path, port_override).await;
     }
 
-    // Auto-detect workers: 0 means optimal workers for integrated LB
-    // Benchmarks show 6-8 workers is optimal regardless of CPU cores
-    // (LB proxy layer becomes the bottleneck beyond 8 workers)
+    // Auto-detect workers: 0 means optimal workers for multi-instance scaling
+    //
+    // Benchmarks on 14-core/20-thread CPU showed:
+    //   - Single LB x 8 workers: ~22,700 rps
+    //   - 2 LBs x 5 workers each: ~25,500 rps (best)
+    //
+    // Formula: threads / 4 (minimum 2)
+    //   - Allows running 2 mik instances for ~12% more throughput
+    //   - Leaves CPU headroom for OS and other processes
+    //
+    // Examples:
+    //   - 20 threads → 5 workers (run 2 instances on ports 3000 & 4000)
+    //   - 16 threads → 4 workers
+    //   - 8 threads  → 2 workers
+    //   - 4 threads  → 2 workers (minimum)
     let workers = if workers == 0 {
-        let cores = std::thread::available_parallelism()
+        let threads = std::thread::available_parallelism()
             .map(|p| p.get() as u16)
             .unwrap_or(4);
-        // Cap at 8 workers for integrated LB (optimal based on benchmarks)
-        // For more workers, use external LB (nginx/haproxy) without --lb flag
-        let optimal = cores.min(8);
-        println!("Auto-detected {} CPU cores, using {} workers (optimal for integrated LB)", cores, optimal);
+        // Optimal workers per instance for multi-LB scaling
+        let optimal = (threads / 4).max(2);
+        println!(
+            "Auto-detected {} threads, using {} workers\n\
+             Tip: Run 2 instances on different ports for ~12% more throughput:\n\
+             \x20 mik run --workers 0 --lb --port 3000\n\
+             \x20 mik run --workers 0 --lb --port 4000",
+            threads, optimal
+        );
         optimal
     } else {
         workers
