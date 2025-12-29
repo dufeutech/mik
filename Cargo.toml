@@ -83,6 +83,7 @@ wasmtime-wasi = "40"
 wasmtime-wasi-http = "40"
 
 # WASM manipulation (for stripping components)
+zip = "2"
 
 # HTTP server
 hyper = { version = "1.5", features = ["server", "http1", "http2"] }

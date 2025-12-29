@@ -10,6 +10,7 @@ pub mod publish;
 pub mod pull;
 pub mod run;
 pub mod static_cmd;
+pub mod strip;
 
 use anyhow::{Context, Result};
 use std::process::Command;

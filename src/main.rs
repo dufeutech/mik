@@ -344,6 +344,24 @@ enum Commands {
         #[arg(short, long)]
         output: Option<String>,
     },
+    /// Strip debug info and custom sections from WASM components
+    ///
+    /// Removes debug info, names, and custom sections to reduce file size.
+    /// Auto-downloads wasm-tools if not installed.
+    ///
+    /// Examples:
+    ///   mik strip component.wasm                    # Strip all, output to component.stripped.wasm
+    ///   mik strip component.wasm -o slim.wasm       # Custom output path
+    Strip {
+        /// Input WASM component file
+        input: String,
+        /// Output file path (default: input.stripped.wasm)
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Only remove debug info (.debug* sections)
+        #[arg(long)]
+        debug_only: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -507,6 +525,19 @@ async fn main() -> Result<()> {
         },
         Commands::Static { output } => {
             commands::static_cmd::execute(output.as_deref())?;
+        },
+        Commands::Strip {
+            input,
+            output,
+            debug_only,
+        } => {
+            let options = commands::strip::StripOptions {
+                all: !debug_only,
+                debug: debug_only,
+                output,
+                ..Default::default()
+            };
+            commands::strip::execute(&input, options)?;
         },
     }
 
