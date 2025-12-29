@@ -16,7 +16,7 @@ mik uses **WASI HTTP 0.2.0**. When building components, use matching WIT definit
 | JavaScript | jco (ComponentizeJS)   | ~12 MB   | ~12 MB   |
 | Python     | componentize-py        | ~39 MB   | ~17 MB   |
 
-> **Tip:** Use `wasm-tools strip --all component.wasm -o stripped.wasm` to remove debug info and names.
+> **Tip:** Use `mik strip component.wasm` to remove debug info and names (auto-downloads wasm-tools if needed), or directly: `wasm-tools strip --all component.wasm -o stripped.wasm`
 
 ## Prerequisites
 
