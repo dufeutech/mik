@@ -1,6 +1,0 @@
-# Go
-*.wasm
-go.sum
-
-# Build artifacts
-dist/
