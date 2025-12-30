@@ -31,5 +31,9 @@ mod circuit_breaker;
 pub mod security;
 
 // Re-export circuit breaker types
-pub use circuit_breaker::CircuitBreaker;
+// Note: CircuitBreakerConfig and CircuitState are used by tests and external callers
+#[allow(unused_imports)]
+pub use circuit_breaker::{
+    CircuitBreaker, CircuitBreakerConfig, CircuitOpenError, CircuitOpenReason, CircuitState,
+};
 pub use security::is_http_host_allowed;
