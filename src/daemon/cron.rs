@@ -1,7 +1,4 @@
 //! Cron scheduler for scheduled WASM job execution.
-
-// Allow unused - cron scheduler for future scheduled job support
-#![allow(dead_code)]
 //!
 //! Provides cron-based scheduling for WASM modules using `tokio-cron-scheduler`.
 //! Jobs are defined in mik.toml and can be managed via HTTP API.
@@ -30,6 +27,9 @@
 //! - `GET /cron/:name` - Get job details
 //! - `POST /cron/:name/trigger` - Manually trigger a job
 //! - `GET /cron/:name/history` - Get execution history
+
+// Allow unused - cron scheduler for future scheduled job support
+#![allow(dead_code)]
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};

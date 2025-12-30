@@ -20,17 +20,21 @@ use std::sync::Arc;
 use crate::daemon::cron::{JobExecution, ScheduleConfig};
 
 /// Table name for instance storage - centralized to avoid duplication
-const INSTANCES_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("instances");
+const INSTANCES_TABLE: TableDefinition<'static, &'static str, &'static [u8]> =
+    TableDefinition::new("instances");
 
 /// Table name for cron job storage
-const CRON_JOBS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("cron_jobs");
+const CRON_JOBS_TABLE: TableDefinition<'static, &'static str, &'static [u8]> =
+    TableDefinition::new("cron_jobs");
 
 /// Table name for cron job execution history
 /// Key format: `job_name:execution_id`
-const CRON_HISTORY_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("cron_history");
+const CRON_HISTORY_TABLE: TableDefinition<'static, &'static str, &'static [u8]> =
+    TableDefinition::new("cron_history");
 
 /// Table name for sidecar service registry
-const SIDECARS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("sidecars");
+const SIDECARS_TABLE: TableDefinition<'static, &'static str, &'static [u8]> =
+    TableDefinition::new("sidecars");
 
 /// Type of sidecar service
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -1058,7 +1062,7 @@ mod tests {
         for i in 1..=5 {
             let mut exec = create_test_execution("my-job", &format!("exec-{i}"), true);
             // Stagger the timestamps so ordering is deterministic
-            exec.started_at = Utc::now() + chrono::Duration::seconds(i as i64);
+            exec.started_at = Utc::now() + chrono::Duration::seconds(i64::from(i));
             store.save_job_execution(&exec).unwrap();
         }
 
@@ -1141,7 +1145,7 @@ mod tests {
         // Save 5 executions with staggered timestamps
         for i in 1..=5 {
             let mut exec = create_test_execution("my-job", &format!("exec-{i}"), true);
-            exec.started_at = Utc::now() + chrono::Duration::seconds(i as i64);
+            exec.started_at = Utc::now() + chrono::Duration::seconds(i64::from(i));
             store.save_job_execution(&exec).unwrap();
         }
 

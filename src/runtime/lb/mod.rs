@@ -87,7 +87,9 @@ pub struct LoadBalancerConfig {
 impl Default for LoadBalancerConfig {
     fn default() -> Self {
         Self {
-            listen_addr: "0.0.0.0:3000".parse().unwrap(),
+            listen_addr: "0.0.0.0:3000"
+                .parse()
+                .expect("valid default listen address"),
             backends: vec![],
             health_check: HealthCheckConfig::default(),
             request_timeout: Duration::from_secs(30),
@@ -196,7 +198,7 @@ impl LoadBalancer {
 
         let client = client_builder
             .build()
-            .expect("Failed to create HTTP client");
+            .expect("failed to create HTTP client - check TLS configuration");
 
         Self {
             config,

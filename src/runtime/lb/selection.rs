@@ -1,4 +1,13 @@
 //! Load balancing selection algorithms.
+//!
+//! Implements various algorithms for selecting which backend should handle
+//! an incoming request. Only healthy backends are considered for selection.
+//!
+//! # Key Types
+//!
+//! - [`Selection`] - Trait defining the selection algorithm interface
+//! - [`RoundRobin`] - Distributes requests evenly in circular fashion
+//! - [`WeightedRoundRobin`] - Distributes requests proportionally to backend weights
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 

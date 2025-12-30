@@ -1,4 +1,15 @@
 //! HTTP proxy service for forwarding requests to backends.
+//!
+//! Implements the L7 reverse proxy that forwards incoming HTTP requests to healthy
+//! backend servers. Handles request/response transformation, hop-by-hop header
+//! filtering, and error handling.
+//!
+//! # Key Types
+//!
+//! - [`ProxyService`] - Main proxy service that handles request forwarding
+//!
+//! The proxy supports both HTTP/1.1 and HTTP/2, and integrates with the load
+//! balancer's selection algorithm and backend health tracking.
 
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -145,7 +156,7 @@ impl ProxyService {
                 return Ok(Response::builder()
                     .status(StatusCode::SERVICE_UNAVAILABLE)
                     .body(Full::new(Bytes::from("No healthy backends available")))
-                    .unwrap());
+                    .expect("valid error response"));
             },
             SelectBackendResult::AllAtCapacity => {
                 warn!("All backends at connection capacity");
@@ -154,7 +165,7 @@ impl ProxyService {
                     .body(Full::new(Bytes::from(
                         "All backends at connection capacity",
                     )))
-                    .unwrap());
+                    .expect("valid error response"));
             },
         };
 
@@ -208,7 +219,7 @@ impl ProxyService {
                 Ok(Response::builder()
                     .status(StatusCode::BAD_GATEWAY)
                     .body(Full::new(Bytes::from(format!("Backend error: {e}"))))
-                    .unwrap())
+                    .expect("valid error response"))
             },
         }
     }

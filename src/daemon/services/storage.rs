@@ -24,7 +24,8 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 /// Table for object metadata storage
-const OBJECTS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("objects");
+const OBJECTS_TABLE: TableDefinition<'static, &'static str, &'static [u8]> =
+    TableDefinition::new("objects");
 
 /// Metadata for a stored object
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

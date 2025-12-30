@@ -927,7 +927,6 @@ async fn instance_health_check_task(
 }
 
 /// Checks all running instances and attempts to recover crashed ones.
-#[allow(clippy::too_many_lines)]
 async fn check_and_recover_instances(state: &SharedState) {
     // Extract the store first to avoid holding the lock during blocking operations
     let store = {
@@ -945,151 +944,180 @@ async fn check_and_recover_instances(state: &SharedState) {
     };
 
     for instance in instances {
-        // Only check instances marked as Running
-        if instance.status != Status::Running {
-            continue;
-        }
+        check_and_recover_single_instance(&store, instance).await;
+    }
+}
 
-        // Check if process is actually running
-        let is_running = match process::is_running(instance.pid) {
-            Ok(running) => running,
-            Err(e) => {
-                tracing::warn!(
-                    instance = %instance.name,
-                    pid = instance.pid,
-                    error = %e,
-                    "Failed to check process status"
-                );
-                continue;
-            },
-        };
+/// Check a single instance and attempt recovery if crashed.
+async fn check_and_recover_single_instance(store: &StateStore, instance: Instance) {
+    // Only check instances marked as Running
+    if instance.status != Status::Running {
+        return;
+    }
 
-        if is_running {
-            continue; // Instance is healthy
-        }
-
-        // Instance crashed!
-        tracing::warn!(
-            instance = %instance.name,
-            pid = instance.pid,
-            "Instance crashed (process not running)"
-        );
-
-        // Update status to Crashed using async method
-        let mut crashed_instance = instance.clone();
-        crashed_instance.status = Status::Crashed { exit_code: -1 };
-
-        if let Err(e) = store.save_instance_async(crashed_instance).await {
-            tracing::error!(
+    // Check if process is actually running
+    let is_running = match process::is_running(instance.pid) {
+        Ok(running) => running,
+        Err(e) => {
+            tracing::warn!(
                 instance = %instance.name,
+                pid = instance.pid,
                 error = %e,
-                "Failed to update instance status to crashed"
+                "Failed to check process status"
             );
-            continue;
-        }
+            return;
+        },
+    };
 
-        // Check if auto-restart is enabled
-        if !instance.auto_restart {
-            tracing::info!(
-                instance = %instance.name,
-                "Auto-restart disabled, not recovering"
-            );
-            continue;
-        }
+    if is_running {
+        return; // Instance is healthy
+    }
 
-        // Check if we've exceeded max restarts
-        if instance.restart_count >= MAX_AUTO_RESTARTS {
-            tracing::error!(
-                instance = %instance.name,
-                restart_count = instance.restart_count,
-                "Max auto-restarts ({}) exceeded, giving up",
-                MAX_AUTO_RESTARTS
-            );
-            continue;
-        }
+    // Instance crashed - handle recovery
+    handle_crashed_instance(store, instance).await;
+}
 
-        // Calculate backoff delay (exponential with cap)
-        let backoff_secs = std::cmp::min(
-            BASE_BACKOFF_SECS * 2u64.pow(instance.restart_count),
-            MAX_BACKOFF_SECS,
+/// Handle a crashed instance: update status and attempt auto-restart if enabled.
+async fn handle_crashed_instance(store: &StateStore, instance: Instance) {
+    tracing::warn!(
+        instance = %instance.name,
+        pid = instance.pid,
+        "Instance crashed (process not running)"
+    );
+
+    // Update status to Crashed using async method
+    let mut crashed_instance = instance.clone();
+    crashed_instance.status = Status::Crashed { exit_code: -1 };
+
+    if let Err(e) = store.save_instance_async(crashed_instance).await {
+        tracing::error!(
+            instance = %instance.name,
+            error = %e,
+            "Failed to update instance status to crashed"
         );
+        return;
+    }
 
-        // Check if enough time has passed since last restart
-        if let Some(last_restart) = instance.last_restart_at {
-            let elapsed = chrono::Utc::now()
-                .signed_duration_since(last_restart)
-                .num_seconds();
-            #[allow(clippy::cast_possible_wrap)]
-            let backoff_secs_i64 = backoff_secs as i64;
-            if elapsed < backoff_secs_i64 {
-                tracing::debug!(
-                    instance = %instance.name,
-                    backoff_remaining = backoff_secs_i64 - elapsed,
-                    "Waiting for backoff before restart"
-                );
-                continue;
-            }
-        }
-
-        // Attempt restart
+    // Check if auto-restart is enabled
+    if !instance.auto_restart {
         tracing::info!(
             instance = %instance.name,
-            restart_count = instance.restart_count + 1,
-            backoff_secs = backoff_secs,
-            "Attempting auto-restart"
+            "Auto-restart disabled, not recovering"
         );
+        return;
+    }
 
-        let spawn_config = process::SpawnConfig {
-            name: instance.name.clone(),
-            port: instance.port,
-            config_path: instance.config.clone(),
-            working_dir: instance
-                .config
-                .parent()
-                .unwrap_or(std::path::Path::new("."))
-                .to_path_buf(),
-            hot_reload: false,
-        };
+    // Attempt auto-restart with backoff
+    attempt_auto_restart(store, &instance).await;
+}
 
-        match process::spawn_instance(&spawn_config) {
-            Ok(info) => {
-                let restarted = Instance {
-                    name: instance.name.clone(),
-                    port: instance.port,
-                    pid: info.pid,
-                    status: Status::Running,
-                    config: instance.config.clone(),
-                    started_at: chrono::Utc::now(),
-                    modules: instance.modules.clone(),
-                    auto_restart: true,
-                    restart_count: instance.restart_count + 1,
-                    last_restart_at: Some(chrono::Utc::now()),
-                };
+/// Attempt to auto-restart a crashed instance with exponential backoff.
+async fn attempt_auto_restart(store: &StateStore, instance: &Instance) {
+    // Check if we've exceeded max restarts
+    if instance.restart_count >= MAX_AUTO_RESTARTS {
+        tracing::error!(
+            instance = %instance.name,
+            restart_count = instance.restart_count,
+            "Max auto-restarts ({}) exceeded, giving up",
+            MAX_AUTO_RESTARTS
+        );
+        return;
+    }
 
-                // Use async method
-                if let Err(e) = store.save_instance_async(restarted.clone()).await {
-                    tracing::error!(
-                        instance = %instance.name,
-                        error = %e,
-                        "Failed to save restarted instance state"
-                    );
-                } else {
-                    tracing::info!(
-                        instance = %instance.name,
-                        pid = info.pid,
-                        restart_count = restarted.restart_count,
-                        "Instance auto-restarted successfully"
-                    );
-                }
-            },
-            Err(e) => {
+    // Calculate backoff delay (exponential with cap)
+    let backoff_secs = std::cmp::min(
+        BASE_BACKOFF_SECS * 2u64.pow(instance.restart_count),
+        MAX_BACKOFF_SECS,
+    );
+
+    // Check if enough time has passed since last restart
+    if !should_restart_now(instance, backoff_secs) {
+        return;
+    }
+
+    // Attempt restart
+    tracing::info!(
+        instance = %instance.name,
+        restart_count = instance.restart_count + 1,
+        backoff_secs = backoff_secs,
+        "Attempting auto-restart"
+    );
+
+    spawn_and_save_restarted_instance(store, instance).await;
+}
+
+/// Check if enough time has passed since the last restart attempt.
+fn should_restart_now(instance: &Instance, backoff_secs: u64) -> bool {
+    if let Some(last_restart) = instance.last_restart_at {
+        let elapsed = chrono::Utc::now()
+            .signed_duration_since(last_restart)
+            .num_seconds();
+        #[allow(clippy::cast_possible_wrap)]
+        let backoff_secs_i64 = backoff_secs as i64;
+        if elapsed < backoff_secs_i64 {
+            tracing::debug!(
+                instance = %instance.name,
+                backoff_remaining = backoff_secs_i64 - elapsed,
+                "Waiting for backoff before restart"
+            );
+            return false;
+        }
+    }
+    true
+}
+
+/// Spawn a new instance process and save the updated state.
+async fn spawn_and_save_restarted_instance(store: &StateStore, instance: &Instance) {
+    let spawn_config = SpawnConfig {
+        name: instance.name.clone(),
+        port: instance.port,
+        config_path: instance.config.clone(),
+        working_dir: instance
+            .config
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .to_path_buf(),
+        hot_reload: false,
+    };
+
+    match process::spawn_instance(&spawn_config) {
+        Ok(info) => {
+            let restarted = Instance {
+                name: instance.name.clone(),
+                port: instance.port,
+                pid: info.pid,
+                status: Status::Running,
+                config: instance.config.clone(),
+                started_at: chrono::Utc::now(),
+                modules: instance.modules.clone(),
+                auto_restart: true,
+                restart_count: instance.restart_count + 1,
+                last_restart_at: Some(chrono::Utc::now()),
+            };
+
+            // Use async method
+            if let Err(e) = store.save_instance_async(restarted.clone()).await {
                 tracing::error!(
                     instance = %instance.name,
                     error = %e,
-                    "Failed to auto-restart instance"
+                    "Failed to save restarted instance state"
                 );
-            },
-        }
+            } else {
+                tracing::info!(
+                    instance = %instance.name,
+                    pid = info.pid,
+                    restart_count = restarted.restart_count,
+                    "Instance auto-restarted successfully"
+                );
+            }
+        },
+        Err(e) => {
+            tracing::error!(
+                instance = %instance.name,
+                error = %e,
+                "Failed to auto-restart instance"
+            );
+        },
     }
 }
 

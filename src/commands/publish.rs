@@ -236,110 +236,141 @@ fn find_dir(candidates: &[&str]) -> Option<PathBuf> {
 }
 
 /// Handle publish errors with detailed diagnostics.
-#[allow(clippy::too_many_lines)]
 fn handle_publish_error(error: anyhow::Error, repo: &str, version: &str) -> Result<()> {
     let error_msg = error.to_string();
 
-    eprintln!("\n{}", "=".repeat(60));
-    eprintln!("Publish Failed");
-    eprintln!("{}", "=".repeat(60));
-    eprintln!("\nError: {error_msg}");
+    print_error_header("Publish Failed", &error_msg);
 
-    // Detect specific error patterns
+    // Detect specific error patterns and provide targeted help
     if is_auth_error(&error_msg) {
-        eprintln!("\n{}", "=".repeat(60));
-        eprintln!("Authentication Error");
-        eprintln!("{}", "=".repeat(60));
-        eprintln!("\nYou are not authenticated with GitHub.");
-        eprintln!("\nTo fix this:");
-        eprintln!("  1. Run: gh auth login");
-        eprintln!("  2. Follow the prompts to authenticate with GitHub");
-        eprintln!("  3. Verify authentication: gh auth status");
-        eprintln!("\nAlternatively, set GITHUB_TOKEN environment variable:");
-        eprintln!("  export GITHUB_TOKEN=your_personal_access_token");
-        eprintln!("\nFor more help:");
-        eprintln!("  https://cli.github.com/manual/gh_auth_login");
+        print_auth_error_help();
         anyhow::bail!("GitHub authentication required");
     }
 
     if is_version_conflict_error(&error_msg) {
-        eprintln!("\n{}", "=".repeat(60));
-        eprintln!("Version Conflict");
-        eprintln!("{}", "=".repeat(60));
-        eprintln!("\nRelease version '{version}' already exists.");
-        eprintln!("\nTo fix this:");
-        eprintln!("  1. Use a different version tag:");
-        eprintln!(
-            "     mik publish --tag v{}.1",
-            version.trim_start_matches('v')
-        );
-        eprintln!("  2. Or delete the existing release:");
-        eprintln!("     gh release delete {version} --repo {repo} --yes");
-        eprintln!("\nCheck existing releases:");
-        eprintln!("  gh release list --repo {repo}");
-        eprintln!("  https://github.com/{repo}/releases");
+        print_version_conflict_help(repo, version);
         anyhow::bail!("Release version already exists");
     }
 
     if is_network_error(&error_msg) {
-        eprintln!("\n{}", "=".repeat(60));
-        eprintln!("Network Error");
-        eprintln!("{}", "=".repeat(60));
-        eprintln!("\nFailed to connect to GitHub.");
-        eprintln!("\nPossible causes:");
-        eprintln!("  - No internet connection");
-        eprintln!("  - GitHub API is down or rate-limited");
-        eprintln!("  - Firewall or proxy blocking connection");
-        eprintln!("  - DNS resolution failure");
-        eprintln!("\nTo fix this:");
-        eprintln!("  1. Check your internet connection");
-        eprintln!("  2. Verify GitHub status: https://www.githubstatus.com/");
-        eprintln!("  3. Check API rate limits: gh api rate_limit");
-        eprintln!("  4. Try again in a few minutes");
-        eprintln!("\nIf behind a proxy, configure:");
-        eprintln!("  export HTTPS_PROXY=http://proxy:port");
+        print_network_error_help();
         anyhow::bail!("Network connection failed");
     }
 
     if is_permission_error(&error_msg) {
-        eprintln!("\n{}", "=".repeat(60));
-        eprintln!("Permission Error");
-        eprintln!("{}", "=".repeat(60));
-        eprintln!("\nYou don't have permission to create releases in this repository.");
-        eprintln!("\nRepository: {repo}");
-        eprintln!("\nTo fix this:");
-        eprintln!("  1. Ensure you have write access to the repository");
-        eprintln!("  2. Check repository permissions: gh repo view {repo}");
-        eprintln!("  3. Verify you're authenticated with the correct account: gh auth status");
-        eprintln!("  4. If using a token, ensure it has 'repo' scope");
-        eprintln!("\nFor organization repos, you may need:");
-        eprintln!("  - Maintainer or Admin role");
-        eprintln!("  - Repository write permissions");
+        print_permission_error_help(repo);
         anyhow::bail!("Insufficient permissions");
     }
 
     if is_repo_not_found_error(&error_msg) {
-        eprintln!("\n{}", "=".repeat(60));
-        eprintln!("Repository Not Found");
-        eprintln!("{}", "=".repeat(60));
-        eprintln!("\nRepository '{repo}' not found or not accessible.");
-        eprintln!("\nPossible causes:");
-        eprintln!("  - Repository doesn't exist");
-        eprintln!("  - Repository is private and you don't have access");
-        eprintln!("  - Typo in repository name");
-        eprintln!("\nTo fix this:");
-        eprintln!("  1. Verify repository exists: https://github.com/{repo}");
-        eprintln!("  2. Check git remote: git remote -v");
-        eprintln!(
-            "  3. Update origin if needed: git remote set-url origin https://github.com/{repo}.git"
-        );
+        print_repo_not_found_help(repo);
         anyhow::bail!("Repository not found");
     }
 
-    // Generic error
+    // Generic error - show troubleshooting steps
+    print_generic_troubleshooting_help(repo);
+
+    Err(error)
+}
+
+/// Print a formatted error header with separator lines.
+fn print_error_header(title: &str, error_msg: &str) {
     eprintln!("\n{}", "=".repeat(60));
-    eprintln!("Troubleshooting");
+    eprintln!("{title}");
     eprintln!("{}", "=".repeat(60));
+    eprintln!("\nError: {error_msg}");
+}
+
+/// Print a formatted section header.
+fn print_section_header(title: &str) {
+    eprintln!("\n{}", "=".repeat(60));
+    eprintln!("{title}");
+    eprintln!("{}", "=".repeat(60));
+}
+
+/// Print help for authentication errors.
+fn print_auth_error_help() {
+    print_section_header("Authentication Error");
+    eprintln!("\nYou are not authenticated with GitHub.");
+    eprintln!("\nTo fix this:");
+    eprintln!("  1. Run: gh auth login");
+    eprintln!("  2. Follow the prompts to authenticate with GitHub");
+    eprintln!("  3. Verify authentication: gh auth status");
+    eprintln!("\nAlternatively, set GITHUB_TOKEN environment variable:");
+    eprintln!("  export GITHUB_TOKEN=your_personal_access_token");
+    eprintln!("\nFor more help:");
+    eprintln!("  https://cli.github.com/manual/gh_auth_login");
+}
+
+/// Print help for version conflict errors.
+fn print_version_conflict_help(repo: &str, version: &str) {
+    print_section_header("Version Conflict");
+    eprintln!("\nRelease version '{version}' already exists.");
+    eprintln!("\nTo fix this:");
+    eprintln!("  1. Use a different version tag:");
+    eprintln!(
+        "     mik publish --tag v{}.1",
+        version.trim_start_matches('v')
+    );
+    eprintln!("  2. Or delete the existing release:");
+    eprintln!("     gh release delete {version} --repo {repo} --yes");
+    eprintln!("\nCheck existing releases:");
+    eprintln!("  gh release list --repo {repo}");
+    eprintln!("  https://github.com/{repo}/releases");
+}
+
+/// Print help for network errors.
+fn print_network_error_help() {
+    print_section_header("Network Error");
+    eprintln!("\nFailed to connect to GitHub.");
+    eprintln!("\nPossible causes:");
+    eprintln!("  - No internet connection");
+    eprintln!("  - GitHub API is down or rate-limited");
+    eprintln!("  - Firewall or proxy blocking connection");
+    eprintln!("  - DNS resolution failure");
+    eprintln!("\nTo fix this:");
+    eprintln!("  1. Check your internet connection");
+    eprintln!("  2. Verify GitHub status: https://www.githubstatus.com/");
+    eprintln!("  3. Check API rate limits: gh api rate_limit");
+    eprintln!("  4. Try again in a few minutes");
+    eprintln!("\nIf behind a proxy, configure:");
+    eprintln!("  export HTTPS_PROXY=http://proxy:port");
+}
+
+/// Print help for permission errors.
+fn print_permission_error_help(repo: &str) {
+    print_section_header("Permission Error");
+    eprintln!("\nYou don't have permission to create releases in this repository.");
+    eprintln!("\nRepository: {repo}");
+    eprintln!("\nTo fix this:");
+    eprintln!("  1. Ensure you have write access to the repository");
+    eprintln!("  2. Check repository permissions: gh repo view {repo}");
+    eprintln!("  3. Verify you're authenticated with the correct account: gh auth status");
+    eprintln!("  4. If using a token, ensure it has 'repo' scope");
+    eprintln!("\nFor organization repos, you may need:");
+    eprintln!("  - Maintainer or Admin role");
+    eprintln!("  - Repository write permissions");
+}
+
+/// Print help for repository not found errors.
+fn print_repo_not_found_help(repo: &str) {
+    print_section_header("Repository Not Found");
+    eprintln!("\nRepository '{repo}' not found or not accessible.");
+    eprintln!("\nPossible causes:");
+    eprintln!("  - Repository doesn't exist");
+    eprintln!("  - Repository is private and you don't have access");
+    eprintln!("  - Typo in repository name");
+    eprintln!("\nTo fix this:");
+    eprintln!("  1. Verify repository exists: https://github.com/{repo}");
+    eprintln!("  2. Check git remote: git remote -v");
+    eprintln!(
+        "  3. Update origin if needed: git remote set-url origin https://github.com/{repo}.git"
+    );
+}
+
+/// Print generic troubleshooting help.
+fn print_generic_troubleshooting_help(repo: &str) {
+    print_section_header("Troubleshooting");
     eprintln!("\n1. Verify gh CLI is installed and authenticated:");
     eprintln!("   gh auth status");
     eprintln!("\n2. Check repository access:");
@@ -348,8 +379,6 @@ fn handle_publish_error(error: anyhow::Error, repo: &str, version: &str) -> Resu
     eprintln!("   gh release list --repo {repo}");
     eprintln!("\n4. Try with --dry-run to test without publishing:");
     eprintln!("   mik publish --dry-run");
-
-    Err(error)
 }
 
 /// Handle asset upload errors with detailed diagnostics.

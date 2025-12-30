@@ -1,7 +1,4 @@
 //! Process management for mik daemon instances.
-#![allow(dead_code)] // Daemon infrastructure for future background mode
-#![allow(clippy::collapsible_if)]
-#![allow(clippy::unnecessary_wraps)]
 //!
 //! This module handles spawning and managing mik server instances as background
 //! processes. Each instance runs independently with its own port, logs, and
@@ -11,6 +8,10 @@
 //!
 //! Log files are automatically rotated when they exceed a configured size.
 //! Rotated logs are renamed with a timestamp suffix (e.g., `default.log.20250101-120000`).
+
+#![allow(dead_code)] // Daemon infrastructure for future background mode
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::unnecessary_wraps)]
 
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -611,7 +612,7 @@ mod tests {
         let mut file = File::create(&log_file).unwrap();
         let large_content = "x".repeat(1024); // 1KB line
         for _ in 0..200 {
-            writeln!(file, "{}", large_content).unwrap();
+            writeln!(file, "{large_content}").unwrap();
         }
         drop(file);
 
@@ -630,7 +631,7 @@ mod tests {
         // There should be a rotated file
         let entries: Vec<_> = fs::read_dir(temp_dir.path())
             .unwrap()
-            .filter_map(|e| e.ok())
+            .filter_map(Result::ok)
             .collect();
         assert_eq!(entries.len(), 1);
         assert!(
@@ -672,7 +673,7 @@ mod tests {
         // Count remaining rotated files
         let remaining: Vec<_> = fs::read_dir(temp_dir.path())
             .unwrap()
-            .filter_map(|e| e.ok())
+            .filter_map(Result::ok)
             .filter(|e| e.file_name().to_string_lossy().starts_with("test.log."))
             .collect();
 

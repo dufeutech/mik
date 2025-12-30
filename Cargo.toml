@@ -170,6 +170,10 @@ tower = { version = "0.5", features = ["util"] }
 axum-test-helpers = { package = "axum-test-helper", version = "0.4" }
 serial_test = "3"
 proptest = "1.5"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+arbitrary = { version = "1.4", features = ["derive"] }
+loom = "0.7"
 tokio-test = "0.4"
 criterion = { version = "0.8", features = ["html_reports"] }
 

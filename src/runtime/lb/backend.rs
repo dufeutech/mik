@@ -1,4 +1,15 @@
 //! Backend server representation and state management.
+//!
+//! Provides the [`Backend`] type which tracks the state of individual backend
+//! servers including health status, active connections, and circuit breaker state.
+//!
+//! # Key Types
+//!
+//! - [`Backend`] - Represents a single backend server with health and connection tracking
+//! - [`BackendState`] - Enum representing backend health states (Healthy, Unhealthy, etc.)
+//!
+//! Each backend tracks metrics like active requests, failure counts, and supports
+//! optional circuit breaker integration for fault isolation.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;

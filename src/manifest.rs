@@ -558,7 +558,6 @@ impl Manifest {
     ///
     /// Returns detailed error messages that tell the user exactly what's wrong
     /// and how to fix it.
-    #[allow(clippy::too_many_lines)]
     pub fn validate(&self, manifest_path: &Path) -> Result<()> {
         let mut errors = Vec::new();
 
@@ -627,8 +626,176 @@ impl Manifest {
         Ok(())
     }
 
+    /// Validate empty fields in detailed dependency.
+    fn validate_detail_empty_fields(
+        name: &str,
+        detail: &DependencyDetail,
+        dep_type: &str,
+    ) -> Result<(), String> {
+        if let Some(version) = &detail.version
+            && version.is_empty()
+        {
+            return Err(format!(
+                "{dep_type} '{name}' has empty version string\n  \
+                 Fix: Specify a version like: {name} = \"1.0\""
+            ));
+        }
+        if let Some(git) = &detail.git
+            && git.is_empty()
+        {
+            return Err(format!(
+                "{dep_type} '{name}' has empty git URL\n  \
+                 Fix: Specify a git URL like: git = \"https://github.com/user/repo.git\""
+            ));
+        }
+        if let Some(path) = &detail.path
+            && path.is_empty()
+        {
+            return Err(format!(
+                "{dep_type} '{name}' has empty path\n  \
+                 Fix: Specify a path like: path = \"../component.wasm\""
+            ));
+        }
+        if let Some(registry) = &detail.registry
+            && registry.is_empty()
+        {
+            return Err(format!(
+                "{dep_type} '{name}' has empty registry URL\n  \
+                 Fix: Specify a registry like: registry = \"ghcr.io/user/component\""
+            ));
+        }
+        Ok(())
+    }
+
+    /// Validate dependency sources (version, git, path, registry).
+    fn validate_dependency_sources(
+        name: &str,
+        detail: &DependencyDetail,
+        dep_type: &str,
+    ) -> Result<(), String> {
+        let has_version = detail.version.as_ref().is_some_and(|v| !v.is_empty());
+        let has_git = detail.git.as_ref().is_some_and(|v| !v.is_empty());
+        let has_path = detail.path.as_ref().is_some_and(|v| !v.is_empty());
+        let has_registry = detail.registry.as_ref().is_some_and(|v| !v.is_empty());
+
+        let sources = match (has_version, has_git, has_path, has_registry) {
+            // Valid single-source combinations
+            (true, false, false, true | false)
+            | (false, true, false, false)
+            | (false, false, true, false)
+            | (false, false, false, true) => return Ok(()),
+            // No sources specified
+            (false, false, false, false) => {
+                return Err(format!(
+                    "{dep_type} '{name}' must specify at least one source:\n  \
+                     - version = \"1.0\" (from default registry)\n  \
+                     - git = \"https://github.com/...\"\n  \
+                     - path = \"../local/path\"\n  \
+                     - registry = \"ghcr.io/user/component\" (requires version)"
+                ));
+            },
+            // Multiple sources - build error list
+            _ => {
+                let mut sources_list = vec![];
+                if has_version {
+                    sources_list.push("version");
+                }
+                if has_git {
+                    sources_list.push("git");
+                }
+                if has_path {
+                    sources_list.push("path");
+                }
+                if has_registry {
+                    sources_list.push("registry");
+                }
+                if has_registry && has_version && !has_git && !has_path {
+                    return Ok(());
+                }
+                sources_list
+            },
+        };
+
+        Err(format!(
+            "{dep_type} '{name}' specifies multiple sources: {}\n  \
+             Only one source type is allowed per dependency\n  \
+             Note: registry requires both 'registry' and 'version' fields",
+            sources.join(", ")
+        ))
+    }
+
+    /// Validate path dependency exists and has correct extension.
+    fn validate_path_dependency(
+        name: &str,
+        path: &str,
+        manifest_dir: &Path,
+        dep_type: &str,
+    ) -> Result<(), String> {
+        let dep_path = manifest_dir.join(path);
+        if !dep_path.exists() {
+            return Err(format!(
+                "{dep_type} '{name}' references non-existent path: {path}\n  \
+                 Current directory: {}\n  Resolved path: {}\n  \
+                 Fix: Ensure the component file exists or update the path",
+                manifest_dir.display(),
+                dep_path.display()
+            ));
+        }
+
+        let has_wasm_ext = std::path::Path::new(path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("wasm"));
+        if !has_wasm_ext && !dep_path.is_dir() {
+            return Err(format!(
+                "{dep_type} '{name}' path '{path}' should be a .wasm file or directory\n  \
+                 Current: {}\n  Expected: {name}.wasm or a directory containing mik.toml",
+                dep_path.display()
+            ));
+        }
+        Ok(())
+    }
+
+    /// Validate git dependency URL and refs.
+    fn validate_git_dependency(
+        name: &str,
+        detail: &DependencyDetail,
+        dep_type: &str,
+    ) -> Result<(), String> {
+        let Some(git) = &detail.git else {
+            return Ok(());
+        };
+
+        if !Self::is_valid_git_url(git) {
+            return Err(format!(
+                "{dep_type} '{name}' has invalid git URL: {git}\n  \
+                 Valid formats:\n  \
+                 - https://github.com/user/repo.git\n  \
+                 - git://github.com/user/repo.git\n  \
+                 - ssh://git@github.com/user/repo.git\n  \
+                 - git@github.com:user/repo.git"
+            ));
+        }
+
+        let git_refs: Vec<_> = [
+            detail.branch.as_ref().map(|_| "branch"),
+            detail.tag.as_ref().map(|_| "tag"),
+            detail.rev.as_ref().map(|_| "rev"),
+        ]
+        .iter()
+        .filter_map(|&s| s)
+        .collect();
+
+        if git_refs.len() > 1 {
+            return Err(format!(
+                "{dep_type} '{name}' specifies multiple git refs: {}\n  \
+                 Only one of branch, tag, or rev is allowed",
+                git_refs.join(", ")
+            ));
+        }
+        Ok(())
+    }
+
     /// Validate a single dependency.
-    #[allow(clippy::too_many_lines)]
     fn validate_dependency(
         name: &str,
         dep: &Dependency,
@@ -641,7 +808,6 @@ impl Manifest {
             "dependency"
         };
 
-        // Validate dependency name
         if name.is_empty() {
             return Err(format!(
                 "Empty {dep_type} name found. Dependency names must be non-empty"
@@ -658,197 +824,20 @@ impl Manifest {
                 }
             },
             Dependency::Detailed(detail) => {
-                // First, validate individual fields for emptiness
-                // This must come before counting sources to catch empty strings
+                Self::validate_detail_empty_fields(name, detail, dep_type)?;
+                Self::validate_dependency_sources(name, detail, dep_type)?;
 
-                // Check for empty version
-                if let Some(version) = &detail.version
-                    && version.is_empty()
-                {
-                    return Err(format!(
-                        "{dep_type} '{name}' has empty version string\n  \
-                             Fix: Specify a version like: {name} = \"1.0\""
-                    ));
-                }
-
-                // Check for empty git URL
-                if let Some(git) = &detail.git
-                    && git.is_empty()
-                {
-                    return Err(format!(
-                        "{dep_type} '{name}' has empty git URL\n  \
-                             Fix: Specify a git URL like: git = \"https://github.com/user/repo.git\""
-                    ));
-                }
-
-                // Check for empty path
-                if let Some(path) = &detail.path
-                    && path.is_empty()
-                {
-                    return Err(format!(
-                        "{dep_type} '{name}' has empty path\n  \
-                             Fix: Specify a path like: path = \"../component.wasm\""
-                    ));
-                }
-
-                // Check for empty registry
-                if let Some(registry) = &detail.registry
-                    && registry.is_empty()
-                {
-                    return Err(format!(
-                        "{dep_type} '{name}' has empty registry URL\n  \
-                             Fix: Specify a registry like: registry = \"ghcr.io/user/component\""
-                    ));
-                }
-
-                // Count how many source types are specified (ignore empty strings)
-                // Note: registry + version together count as ONE source (external registry)
-                let has_version = detail.version.as_ref().filter(|v| !v.is_empty()).is_some();
-                let has_git = detail.git.as_ref().filter(|v| !v.is_empty()).is_some();
-                let has_path = detail.path.as_ref().filter(|v| !v.is_empty()).is_some();
-                let has_registry = detail.registry.as_ref().filter(|v| !v.is_empty()).is_some();
-
-                // Determine the actual source type
-                let sources = match (has_version, has_git, has_path, has_registry) {
-                    // Registry + version is valid (external registry)
-                    (true, false, false, true) => vec!["registry"],
-                    // Version alone (default registry)
-                    (true, false, false, false) => vec!["version"],
-                    // Git alone
-                    (false, true, false, false) => vec!["git"],
-                    // Path alone
-                    (false, false, true, false) => vec!["path"],
-                    // No sources
-                    (false, false, false, false) => vec![],
-                    (false, false, false, true) => {
-                        // Registry without version - error is already caught above
-                        vec!["registry"]
-                    },
-                    // Invalid combinations
-                    _ => {
-                        let mut sources_list = vec![];
-                        if has_version {
-                            sources_list.push("version");
-                        }
-                        if has_git {
-                            sources_list.push("git");
-                        }
-                        if has_path {
-                            sources_list.push("path");
-                        }
-                        if has_registry {
-                            sources_list.push("registry");
-                        }
-
-                        // If we have registry + version, that's not an error
-                        if has_registry && has_version && !has_git && !has_path {
-                            vec!["registry"]
-                        } else {
-                            sources_list
-                        }
-                    },
-                };
-
-                if sources.is_empty() {
-                    return Err(format!(
-                        "{dep_type} '{name}' must specify at least one source:\n  \
-                         - version = \"1.0\" (from default registry)\n  \
-                         - git = \"https://github.com/...\"\n  \
-                         - path = \"../local/path\"\n  \
-                         - registry = \"ghcr.io/user/component\" (requires version)"
-                    ));
-                }
-
-                if sources.len() > 1 {
-                    return Err(format!(
-                        "{} '{}' specifies multiple sources: {}\n  \
-                         Only one source type is allowed per dependency\n  \
-                         Note: registry requires both 'registry' and 'version' fields",
-                        dep_type,
-                        name,
-                        sources.join(", ")
-                    ));
-                }
-
-                // Validate path dependencies - check if path exists
                 if let Some(path) = &detail.path {
-                    let dep_path = manifest_dir.join(path);
-                    if !dep_path.exists() {
-                        return Err(format!(
-                            "{} '{}' references non-existent path: {}\n  \
-                             Current directory: {}\n  \
-                             Resolved path: {}\n  \
-                             Fix: Ensure the component file exists or update the path",
-                            dep_type,
-                            name,
-                            path,
-                            manifest_dir.display(),
-                            dep_path.display()
-                        ));
-                    }
-
-                    // Warn if path doesn't look like a WASM file (case-insensitive)
-                    let has_wasm_ext = std::path::Path::new(path)
-                        .extension()
-                        .is_some_and(|e| e.eq_ignore_ascii_case("wasm"));
-                    if !has_wasm_ext && !dep_path.is_dir() {
-                        return Err(format!(
-                            "{} '{}' path '{}' should be a .wasm file or directory\n  \
-                             Current: {}\n  \
-                             Expected: {}.wasm or a directory containing mik.toml",
-                            dep_type,
-                            name,
-                            path,
-                            dep_path.display(),
-                            name
-                        ));
-                    }
+                    Self::validate_path_dependency(name, path, manifest_dir, dep_type)?;
                 }
 
-                // Validate git dependencies using url crate
-                if let Some(git) = &detail.git {
-                    if !Self::is_valid_git_url(git) {
-                        return Err(format!(
-                            "{dep_type} '{name}' has invalid git URL: {git}\n  \
-                             Valid formats:\n  \
-                             - https://github.com/user/repo.git\n  \
-                             - git://github.com/user/repo.git\n  \
-                             - ssh://git@github.com/user/repo.git\n  \
-                             - git@github.com:user/repo.git"
-                        ));
-                    }
+                Self::validate_git_dependency(name, detail, dep_type)?;
 
-                    // Check for conflicting git refs
-                    let git_refs = [
-                        detail.branch.as_ref().map(|_| "branch"),
-                        detail.tag.as_ref().map(|_| "tag"),
-                        detail.rev.as_ref().map(|_| "rev"),
-                    ]
-                    .iter()
-                    .filter_map(|&s| s)
-                    .collect::<Vec<_>>();
-
-                    if git_refs.len() > 1 {
-                        return Err(format!(
-                            "{} '{}' specifies multiple git refs: {}\n  \
-                             Only one of branch, tag, or rev is allowed",
-                            dep_type,
-                            name,
-                            git_refs.join(", ")
-                        ));
-                    }
-                }
-
-                // Validate registry dependencies
-                if detail.registry.is_some()
-                    && detail
-                        .version
-                        .as_ref()
-                        .is_none_or(std::string::String::is_empty)
+                if detail.registry.is_some() && detail.version.as_ref().is_none_or(String::is_empty)
                 {
                     return Err(format!(
                         "{dep_type} '{name}' with registry must specify a version\n  \
-                             Fix: Add version = \"1.0\" alongside registry"
+                         Fix: Add version = \"1.0\" alongside registry"
                     ));
                 }
             },
@@ -908,7 +897,7 @@ impl Manifest {
         // Handle SCP-style URLs (git@host:path)
         if git.starts_with("git@") {
             // Must have : after host and some path
-            return git.contains(':') && git.len() > git.find(':').unwrap() + 1;
+            return git.find(':').is_some_and(|pos| git.len() > pos + 1);
         }
 
         // Standard URL parsing for http/https/git/ssh schemes

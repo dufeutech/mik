@@ -41,7 +41,6 @@ pub async fn start(port: u16) -> Result<()> {
 ///
 /// Spawns a new mik server process and tracks it in state.
 /// If `watch` is true, runs in foreground with hot reload enabled.
-#[allow(clippy::too_many_lines)]
 pub async fn up(name: &str, port: u16, watch: bool) -> Result<()> {
     let state_path = get_state_path()?;
     let store = StateStore::open(&state_path)?;
@@ -102,93 +101,134 @@ pub async fn up(name: &str, port: u16, watch: bool) -> Result<()> {
 
     // If watch mode is enabled, start file watcher
     if watch {
-        let modules_dir = working_dir.join("modules");
-
-        // Ensure modules directory exists
-        if !modules_dir.exists() {
-            std::fs::create_dir_all(&modules_dir)?;
-        }
-
-        println!();
-
-        // Track current instance for restart
-        let current_pid = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(info.pid));
-        let pid_clone = current_pid.clone();
-        let name_clone = name.to_string();
-        let spawn_config_clone = spawn_config.clone();
-
-        crate::daemon::watch::watch_loop(&modules_dir, &config_path, move |event| {
-            use crate::daemon::watch::WatchEvent;
-
-            match event {
-                WatchEvent::ModuleChanged { .. } | WatchEvent::ConfigChanged => {
-                    let old_pid = pid_clone.load(std::sync::atomic::Ordering::Relaxed);
-
-                    // Kill old process
-                    if process::is_running(old_pid).unwrap_or(false)
-                        && let Err(e) = process::kill_instance(old_pid)
-                    {
-                        eprintln!("[mik] Failed to stop old instance: {e}");
-                        return;
-                    }
-
-                    // Spawn new process
-                    let start = std::time::Instant::now();
-                    match process::spawn_instance(&spawn_config_clone) {
-                        Ok(new_info) => {
-                            pid_clone.store(new_info.pid, std::sync::atomic::Ordering::Relaxed);
-                            println!(
-                                "[mik] Reloaded {} (took {}ms)",
-                                name_clone,
-                                start.elapsed().as_millis()
-                            );
-
-                            // Update state
-                            if let Ok(store) = StateStore::open(get_state_path().unwrap()) {
-                                let updated = Instance {
-                                    name: name_clone.clone(),
-                                    port: spawn_config_clone.port,
-                                    pid: new_info.pid,
-                                    status: Status::Running,
-                                    config: spawn_config_clone.config_path.clone(),
-                                    started_at: Utc::now(),
-                                    modules: vec![],
-                                    auto_restart: false,
-                                    restart_count: 0,
-                                    last_restart_at: None,
-                                };
-                                let _ = store.save_instance(&updated);
-                            }
-                        },
-                        Err(e) => {
-                            eprintln!("[mik] Failed to restart: {e}");
-                        },
-                    }
-                },
-                WatchEvent::ModuleRemoved { .. } => {
-                    // Just log, don't restart
-                },
-                WatchEvent::Error { message } => {
-                    eprintln!("[mik] Watch error: {message}");
-                },
-            }
-        })
+        run_watch_mode(
+            name,
+            &working_dir,
+            &config_path,
+            spawn_config,
+            info.pid,
+            &store,
+            instance,
+        )
         .await?;
-
-        // Clean up on exit
-        let final_pid = current_pid.load(std::sync::atomic::Ordering::Relaxed);
-        if process::is_running(final_pid)? {
-            println!("[mik] Stopping instance...");
-            process::kill_instance(final_pid)?;
-        }
-
-        // Update state to stopped
-        let mut stopped = store.get_instance(name)?.unwrap_or(instance);
-        stopped.status = Status::Stopped;
-        store.save_instance(&stopped)?;
     }
 
     Ok(())
+}
+
+/// Run watch mode for hot reloading.
+///
+/// Monitors modules directory and config file for changes, restarting the instance as needed.
+async fn run_watch_mode(
+    name: &str,
+    working_dir: &std::path::Path,
+    config_path: &std::path::Path,
+    spawn_config: SpawnConfig,
+    initial_pid: u32,
+    store: &StateStore,
+    instance: Instance,
+) -> Result<()> {
+    let modules_dir = working_dir.join("modules");
+
+    // Ensure modules directory exists
+    if !modules_dir.exists() {
+        std::fs::create_dir_all(&modules_dir)?;
+    }
+
+    println!();
+
+    // Track current instance for restart
+    let current_pid = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(initial_pid));
+    let pid_clone = current_pid.clone();
+    let name_clone = name.to_string();
+    let spawn_config_clone = spawn_config.clone();
+
+    crate::daemon::watch::watch_loop(&modules_dir, config_path, move |event| {
+        handle_watch_event(event, &pid_clone, &name_clone, &spawn_config_clone);
+    })
+    .await?;
+
+    // Clean up on exit
+    let final_pid = current_pid.load(std::sync::atomic::Ordering::Relaxed);
+    if process::is_running(final_pid)? {
+        println!("[mik] Stopping instance...");
+        process::kill_instance(final_pid)?;
+    }
+
+    // Update state to stopped
+    let mut stopped = store.get_instance(name)?.unwrap_or(instance);
+    stopped.status = Status::Stopped;
+    store.save_instance(&stopped)?;
+
+    Ok(())
+}
+
+/// Handle a single watch event by restarting the instance if needed.
+fn handle_watch_event(
+    event: crate::daemon::watch::WatchEvent,
+    pid: &std::sync::Arc<std::sync::atomic::AtomicU32>,
+    name: &str,
+    spawn_config: &SpawnConfig,
+) {
+    use crate::daemon::watch::WatchEvent;
+
+    match event {
+        WatchEvent::ModuleChanged { .. } | WatchEvent::ConfigChanged => {
+            let old_pid = pid.load(std::sync::atomic::Ordering::Relaxed);
+
+            // Kill old process
+            if process::is_running(old_pid).unwrap_or(false)
+                && let Err(e) = process::kill_instance(old_pid)
+            {
+                eprintln!("[mik] Failed to stop old instance: {e}");
+                return;
+            }
+
+            // Spawn new process
+            let start = std::time::Instant::now();
+            match process::spawn_instance(spawn_config) {
+                Ok(new_info) => {
+                    pid.store(new_info.pid, std::sync::atomic::Ordering::Relaxed);
+                    println!(
+                        "[mik] Reloaded {} (took {}ms)",
+                        name,
+                        start.elapsed().as_millis()
+                    );
+
+                    // Update state
+                    update_instance_state_after_reload(name, spawn_config, new_info.pid);
+                },
+                Err(e) => {
+                    eprintln!("[mik] Failed to restart: {e}");
+                },
+            }
+        },
+        WatchEvent::ModuleRemoved { .. } => {
+            // Just log, don't restart
+        },
+        WatchEvent::Error { message } => {
+            eprintln!("[mik] Watch error: {message}");
+        },
+    }
+}
+
+/// Update instance state in the store after a hot reload.
+fn update_instance_state_after_reload(name: &str, spawn_config: &SpawnConfig, new_pid: u32) {
+    if let Some(store) = get_state_path().ok().and_then(|p| StateStore::open(p).ok()) {
+        let updated = Instance {
+            name: name.to_string(),
+            port: spawn_config.port,
+            pid: new_pid,
+            status: Status::Running,
+            config: spawn_config.config_path.clone(),
+            started_at: Utc::now(),
+            modules: vec![],
+            auto_restart: false,
+            restart_count: 0,
+            last_restart_at: None,
+        };
+        let _ = store.save_instance(&updated);
+    }
 }
 
 /// Stop a running WASM instance.

@@ -168,7 +168,9 @@ fn extract_zip(archive: &Path, dest: &Path) -> Result<()> {
 
         // Handle nested directory structure
         if name.contains("wasm-tools") && (name.ends_with(".exe") || !name.contains('.')) {
-            let filename = Path::new(name).file_name().unwrap();
+            let Some(filename) = Path::new(name).file_name() else {
+                continue; // Skip entries without valid filenames
+            };
             let out_path = dest.join(filename);
             let mut out_file = std::fs::File::create(&out_path)?;
             std::io::copy(&mut file, &mut out_file)?;

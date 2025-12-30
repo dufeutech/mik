@@ -5,6 +5,7 @@
 
 // Allow unused - logging infrastructure for future daemon mode
 #![allow(dead_code)]
+#![allow(clippy::must_use_candidate)]
 
 use std::io;
 use tracing::Level;
@@ -88,12 +89,14 @@ impl LogConfig {
     }
 
     /// Set the log level.
+    #[must_use]
     pub fn level(mut self, level: Level) -> Self {
         self.level = level;
         self
     }
 
     /// Set the log format.
+    #[must_use]
     pub fn format(mut self, format: LogFormat) -> Self {
         self.format = format;
         self

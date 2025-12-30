@@ -11,7 +11,6 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![warn(rust_2018_idioms)]
-#![warn(unreachable_pub)]
 #![allow(missing_debug_implementations)] // Types contain wasmtime::Engine, MokaCache which lack Debug
 
 // Allowed with documented reasons
@@ -22,6 +21,8 @@
 #![allow(clippy::must_use_candidate)] // Not all returned values need annotation
 #![allow(clippy::cast_possible_truncation)] // Intentional in HTTP size calculations
 #![allow(clippy::cast_sign_loss)] // Intentional in size calculations
+#![allow(clippy::trivially_copy_pass_by_ref)] // Consistency in API signatures
+#![allow(clippy::too_many_lines)] // Complex HTTP handlers require more lines
 
 //! Library crate for mik - exposes modules for testing and integration.
 //!
@@ -155,3 +156,29 @@ pub mod config;
 /// This module provides types for parsing and representing
 /// the mik.toml manifest file, including load balancer configuration.
 pub mod manifest;
+
+/// Daemon infrastructure and embedded services.
+///
+/// This module provides infrastructure for the mik daemon including:
+/// - Embedded services (KV, SQL, Storage, Queue)
+/// - Process management
+/// - State persistence
+///
+/// # Services
+///
+/// The daemon provides embedded services that WASM handlers can access:
+///
+/// - [`daemon::services::kv`] - Key-value store backed by redb
+/// - [`daemon::services::sql`] - SQLite database for relational data
+/// - [`daemon::services::storage`] - Filesystem-based object storage
+/// - [`daemon::services::queue`] - In-memory message queues with pub/sub
+#[path = "daemon/mod.rs"]
+pub mod daemon;
+
+/// Shared utility functions for formatting and common operations.
+///
+/// Provides helper functions used across multiple modules:
+/// - [`utils::format_bytes`] - Human-readable byte sizes
+/// - [`utils::format_duration`] - Human-readable durations
+/// - [`utils::get_cargo_name`] - Extract project name from Cargo.toml
+pub mod utils;

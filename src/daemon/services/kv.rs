@@ -1,7 +1,4 @@
 //! Key-value store service backed by redb.
-
-// Allow unused - KV service for future sidecar integration
-#![allow(dead_code)]
 //!
 //! Provides a simple, embedded KV store with TTL support for WASM instances.
 //! Stores data at `~/.mik/kv.redb` with ACID guarantees from redb.
@@ -19,6 +16,9 @@
 //! use the async methods (`get_async`, `set_async`, etc.) which automatically
 //! wrap operations in `spawn_blocking` to avoid blocking the async runtime.
 
+// Allow unused - KV service for future sidecar integration
+#![allow(dead_code)]
+
 use anyhow::{Context, Result};
 use redb::{Database, ReadableDatabase, ReadableTable, TableDefinition};
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Table name for key-value pairs with expiration metadata
-const KV_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("kv");
+const KV_TABLE: TableDefinition<'static, &'static str, &'static [u8]> = TableDefinition::new("kv");
 
 /// Internal structure for storing values with optional expiration.
 ///

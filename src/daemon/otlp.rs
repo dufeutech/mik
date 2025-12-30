@@ -1,3 +1,7 @@
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::trivially_copy_pass_by_ref)]
+#![allow(clippy::needless_pass_by_value)]
+
 //! OpenTelemetry OTLP export configuration (Phase 3).
 //!
 //! This module provides OTLP (OpenTelemetry Protocol) trace export
@@ -62,6 +66,7 @@ impl OtlpConfig {
     }
 
     /// Set the service name.
+    #[must_use]
     pub fn with_service_name(mut self, name: impl Into<String>) -> Self {
         self.service_name = name.into();
         self

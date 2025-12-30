@@ -32,7 +32,6 @@ fn normalize_language(lang: &str) -> &'static str {
 }
 
 /// Build the component.
-#[allow(clippy::too_many_lines)]
 pub async fn execute(release: bool, compose: bool, lang_override: Option<String>) -> Result<()> {
     // Load mik.toml if it exists
     let manifest = Manifest::load().ok();
@@ -274,7 +273,7 @@ fn create_spinner(msg: &str) -> ProgressBar {
     spinner.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.cyan} {msg}")
-            .unwrap(),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
     spinner.set_message(msg.to_string());
     spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
@@ -405,7 +404,7 @@ async fn compose_http_handler(
     spinner.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.cyan} {msg}")
-            .unwrap(),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
     spinner.set_message("Composing with bridge...");
     spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
@@ -508,7 +507,7 @@ async fn download_bridge() -> Result<PathBuf> {
     spinner.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.cyan} {msg}")
-            .unwrap(),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
     spinner.set_message("Downloading bridge from registry...");
     spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
@@ -547,9 +546,109 @@ async fn download_bridge() -> Result<PathBuf> {
     }
 }
 
+/// Check that wac tool is available, printing helpful error if not.
+fn check_wac_available() -> Result<()> {
+    if check_tool("wac").is_err() {
+        eprintln!("\nError: wac not found\n");
+        eprintln!("wac is required for component composition.");
+        eprintln!("\nInstall with:");
+        eprintln!("  cargo install wac-cli");
+        eprintln!("\nFor more information, visit:");
+        eprintln!("  https://github.com/bytecodealliance/wac");
+        anyhow::bail!("Missing required tool: wac");
+    }
+    Ok(())
+}
+
+/// Collect dependency paths from manifest, returning found paths.
+fn collect_dependency_paths(manifest: &Manifest) -> Vec<String> {
+    let spinner = create_spinner("Collecting dependencies...");
+
+    let mut dep_paths: Vec<String> = Vec::new();
+
+    for (name, dep) in &manifest.dependencies {
+        let path = resolve_dependency_path(name, dep);
+        if Path::new(&path).exists() {
+            spinner.set_message(format!("Found {name}"));
+            println!("  + {name}: {path}");
+            dep_paths.push(path);
+        } else {
+            println!("  ! {name}: not found at {path}");
+        }
+    }
+
+    spinner.finish_and_clear();
+    dep_paths
+}
+
+/// Build wac plug command arguments.
+fn build_wac_args(main_component: &Path, output_path: &Path, dep_paths: &[String]) -> Vec<String> {
+    let mut wac_args: Vec<String> = vec!["plug".to_string()];
+
+    for path in dep_paths {
+        wac_args.push("--plug".to_string());
+        wac_args.push(path.clone());
+    }
+
+    wac_args.push(main_component.to_string_lossy().to_string());
+    wac_args.push("-o".to_string());
+    wac_args.push(output_path.to_string_lossy().to_string());
+
+    wac_args
+}
+
+/// Run wac composition command with given arguments.
+fn run_wac_compose(wac_args: &[String]) -> Result<std::process::Output> {
+    println!();
+    println!("Running: wac {}", wac_args.join(" "));
+
+    let spinner = create_spinner("Composing components...");
+
+    let output = Command::new("wac")
+        .args(wac_args)
+        .output()
+        .context("Failed to run wac")?;
+
+    spinner.finish_and_clear();
+    Ok(output)
+}
+
+/// Print detailed composition error with troubleshooting hints.
+fn print_composition_error(output: &std::process::Output) {
+    eprintln!("\n{}", "=".repeat(60));
+    eprintln!("Composition Failed");
+    eprintln!("{}", "=".repeat(60));
+
+    if !output.stderr.is_empty()
+        && let Ok(stderr) = String::from_utf8(output.stderr.clone())
+    {
+        eprintln!("\n{stderr}");
+    }
+
+    if !output.stdout.is_empty()
+        && let Ok(stdout) = String::from_utf8(output.stdout.clone())
+    {
+        eprintln!("{stdout}");
+    }
+
+    eprintln!("\n{}", "=".repeat(60));
+    eprintln!("Common Issues:");
+    eprintln!("{}", "=".repeat(60));
+    eprintln!("\n1. Incompatible WIT interfaces:");
+    eprintln!("   Ensure all components export/import matching interfaces");
+    eprintln!("\n2. Missing dependency components:");
+    eprintln!("   Run 'mik pull' to download dependencies from registry");
+    eprintln!("\n3. Invalid component format:");
+    eprintln!("   Verify all .wasm files are valid WASI components:");
+    eprintln!("   wasm-tools validate component.wasm");
+    eprintln!("\n4. Dependency version mismatch:");
+    eprintln!("   Check mik.toml dependency versions match built components");
+    eprintln!("\nFor debugging, inspect components with:");
+    eprintln!("  wasm-tools component wit <component.wasm>\n");
+}
+
 /// Compose the main component with all dependencies from mik.toml.
 /// Returns the path to composed.wasm if composition was successful.
-#[allow(clippy::too_many_lines)]
 fn compose_all(
     main_component: &Path,
     target_base: &Path,
@@ -566,41 +665,9 @@ fn compose_all(
         manifest.dependencies.len()
     );
 
-    // Check wac is available
-    if check_tool("wac").is_err() {
-        eprintln!("\nError: wac not found\n");
-        eprintln!("wac is required for component composition.");
-        eprintln!("\nInstall with:");
-        eprintln!("  cargo install wac-cli");
-        eprintln!("\nFor more information, visit:");
-        eprintln!("  https://github.com/bytecodealliance/wac");
-        anyhow::bail!("Missing required tool: wac");
-    }
+    check_wac_available()?;
 
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap(),
-    );
-    spinner.set_message("Collecting dependencies...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
-
-    // Collect all dependency paths
-    let mut dep_paths: Vec<String> = Vec::new();
-
-    for (name, dep) in &manifest.dependencies {
-        let path = resolve_dependency_path(name, dep);
-        if Path::new(&path).exists() {
-            spinner.set_message(format!("Found {name}"));
-            println!("  + {name}: {path}");
-            dep_paths.push(path);
-        } else {
-            println!("  ! {name}: not found at {path}");
-        }
-    }
-
-    spinner.finish_and_clear();
+    let dep_paths = collect_dependency_paths(manifest);
 
     if dep_paths.is_empty() {
         println!("No dependency components found in modules/");
@@ -608,88 +675,21 @@ fn compose_all(
         return Ok(None);
     }
 
-    // Create output directory
     let output_path = target_base.join("composed.wasm");
     fs::create_dir_all(target_base)?;
 
-    // Compose: start with main, plug each dependency
-    // wac plug --plug dep1.wasm --plug dep2.wasm main.wasm -o composed.wasm
-    let mut wac_args: Vec<String> = vec!["plug".to_string()];
-
-    for path in &dep_paths {
-        wac_args.push("--plug".to_string());
-        wac_args.push(path.clone());
-    }
-
-    let main_str = main_component.to_string_lossy().to_string();
-    let output_str = output_path.to_string_lossy().to_string();
-
-    wac_args.push(main_str);
-    wac_args.push("-o".to_string());
-    wac_args.push(output_str.clone());
-
-    println!();
-    println!("Running: wac {}", wac_args.join(" "));
-
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap(),
-    );
-    spinner.set_message("Composing components...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
-
-    let output = Command::new("wac")
-        .args(&wac_args)
-        .output()
-        .context("Failed to run wac")?;
-
-    spinner.finish_and_clear();
+    let wac_args = build_wac_args(main_component, &output_path, &dep_paths);
+    let output = run_wac_compose(&wac_args)?;
 
     if !output.status.success() {
-        eprintln!("\n{}", "=".repeat(60));
-        eprintln!("Composition Failed");
-        eprintln!("{}", "=".repeat(60));
-
-        // Print stderr if available
-        if !output.stderr.is_empty()
-            && let Ok(stderr) = String::from_utf8(output.stderr.clone())
-        {
-            eprintln!("\n{stderr}");
-        }
-
-        // Print stdout if available
-        if !output.stdout.is_empty()
-            && let Ok(stdout) = String::from_utf8(output.stdout.clone())
-        {
-            eprintln!("{stdout}");
-        }
-
-        eprintln!("\n{}", "=".repeat(60));
-        eprintln!("Common Issues:");
-        eprintln!("{}", "=".repeat(60));
-        eprintln!("\n1. Incompatible WIT interfaces:");
-        eprintln!("   Ensure all components export/import matching interfaces");
-        eprintln!("\n2. Missing dependency components:");
-        eprintln!("   Run 'mik pull' to download dependencies from registry");
-        eprintln!("\n3. Invalid component format:");
-        eprintln!("   Verify all .wasm files are valid WASI components:");
-        eprintln!("   wasm-tools validate component.wasm");
-        eprintln!("\n4. Dependency version mismatch:");
-        eprintln!("   Check mik.toml dependency versions match built components");
-        eprintln!("\nFor debugging, inspect components with:");
-        eprintln!("  wasm-tools component wit <component.wasm>\n");
-
+        print_composition_error(&output);
         anyhow::bail!("Component composition failed");
     }
 
     println!();
 
-    // Optimize composed output
     optimize_wasm(&output_path)?;
 
-    // Show composed size
     let composed_size = fs::metadata(&output_path).map(|m| m.len()).unwrap_or(0);
     println!(
         "Composed: {} ({})",
@@ -818,7 +818,7 @@ fn optimize_component(wasm_path: &Path, size_before: u64) -> Result<()> {
     spinner.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.cyan} {msg}")
-            .unwrap(),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
     spinner.set_message("Stripping component (removing debug info)...");
     spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
@@ -860,7 +860,7 @@ fn optimize_core_module(wasm_path: &Path, size_before: u64) -> Result<()> {
     spinner.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.cyan} {msg}")
-            .unwrap(),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
     spinner.set_message("Optimizing WASM for size...");
     spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));

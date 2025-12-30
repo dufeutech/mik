@@ -183,8 +183,8 @@ pub async fn sync() -> Result<()> {
     progress.set_style(
         ProgressStyle::default_bar()
             .template("{spinner:.cyan} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
-            .unwrap()
-            .progress_chars("=> "),
+            .map(|s| s.progress_chars("=> "))
+            .unwrap_or_else(|_| ProgressStyle::default_bar()),
     );
 
     for (name, dep) in &missing {

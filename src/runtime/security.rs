@@ -1,4 +1,15 @@
 //! Security utilities for input sanitization and path traversal prevention.
+//!
+//! Provides functions for validating and sanitizing user-provided paths and names
+//! to prevent directory traversal attacks, null byte injection, and Windows-specific
+//! path exploits.
+//!
+//! # Key Functions
+//!
+//! - [`sanitize_file_path`] - Validates file paths, blocks traversal via `..`
+//! - [`sanitize_module_name`] - Validates module names, blocks path separators
+//! - [`validate_windows_path`] - Blocks reserved device names, UNC paths, and ADS
+//! - [`validate_path_within_base`] - Prevents symlink-based traversal (TOCTOU)
 
 use std::path::{Component, Path, PathBuf};
 use tracing::warn;
@@ -18,7 +29,7 @@ use tracing::warn;
 /// - [`EmptyPath`](PathTraversalError::EmptyPath) - Path is empty
 /// - [`AbsolutePath`](PathTraversalError::AbsolutePath) - Path is absolute
 /// - [`EscapesBaseDirectory`](PathTraversalError::EscapesBaseDirectory) - Path escapes base via `..`
-/// - [`WindowsReservedName`](PathTraversalError::WindowsReservedName) - Uses Windows reserved name
+/// - [`ReservedWindowsName`](PathTraversalError::ReservedWindowsName) - Uses Windows reserved name
 /// - [`UncPath`](PathTraversalError::UncPath) - Uses UNC path format
 /// - [`AlternateDataStream`](PathTraversalError::AlternateDataStream) - Uses NTFS ADS
 ///
@@ -725,6 +736,149 @@ mod tests {
         // Should reject the symlink that escapes base
         let result = validate_path_within_base(base.path(), Path::new("evil_link"));
         assert_eq!(result, Err(PathTraversalError::EscapesBaseDirectory));
+    }
+
+    /// Test Windows symlink-based path traversal (directory symlink).
+    ///
+    /// Windows supports both file and directory symlinks. This test verifies
+    /// that directory symlinks pointing outside the base directory are rejected.
+    #[cfg(windows)]
+    #[test]
+    fn test_validate_path_within_base_windows_dir_symlink_escape() {
+        use std::fs;
+        use std::os::windows::fs::symlink_dir;
+        use tempfile::tempdir;
+
+        let base = tempdir().unwrap();
+        let evil_target = tempdir().unwrap();
+
+        // Create evil directory outside base
+        let evil_dir = evil_target.path().join("secrets");
+        fs::create_dir_all(&evil_dir).unwrap();
+        fs::write(evil_dir.join("secret.txt"), "secret data").unwrap();
+
+        // Create directory symlink inside base pointing to evil directory
+        let symlink_path = base.path().join("evil_link");
+        if symlink_dir(&evil_dir, &symlink_path).is_ok() {
+            // Should reject the symlink that escapes base
+            let result = validate_path_within_base(base.path(), Path::new("evil_link/secret.txt"));
+            assert_eq!(result, Err(PathTraversalError::EscapesBaseDirectory));
+
+            // Direct symlink reference should also be rejected
+            let result = validate_path_within_base(base.path(), Path::new("evil_link"));
+            assert_eq!(result, Err(PathTraversalError::EscapesBaseDirectory));
+        }
+        // If symlink creation fails (e.g., not running as admin), skip the test
+    }
+
+    /// Test Windows file symlink-based path traversal.
+    ///
+    /// Windows file symlinks (as opposed to directory symlinks) pointing
+    /// outside the base directory should be rejected.
+    #[cfg(windows)]
+    #[test]
+    fn test_validate_path_within_base_windows_file_symlink_escape() {
+        use std::fs;
+        use std::os::windows::fs::symlink_file;
+        use tempfile::tempdir;
+
+        let base = tempdir().unwrap();
+        let evil_target = tempdir().unwrap();
+
+        // Create evil file outside base
+        let evil_file = evil_target.path().join("secret.txt");
+        fs::write(&evil_file, "secret data").unwrap();
+
+        // Create file symlink inside base pointing to evil file
+        let symlink_path = base.path().join("evil_link.txt");
+        if symlink_file(&evil_file, &symlink_path).is_ok() {
+            // Should reject the symlink that escapes base
+            let result = validate_path_within_base(base.path(), Path::new("evil_link.txt"));
+            assert_eq!(result, Err(PathTraversalError::EscapesBaseDirectory));
+        }
+        // If symlink creation fails (e.g., not running as admin), skip the test
+    }
+
+    /// Test nested symlink chain traversal (Unix).
+    ///
+    /// Multiple levels of symlinks should all be resolved and validated.
+    /// A symlink chain that eventually escapes should be blocked.
+    #[cfg(unix)]
+    #[test]
+    fn test_validate_path_within_base_nested_symlink_escape() {
+        use std::fs;
+        use std::os::unix::fs::symlink;
+        use tempfile::tempdir;
+
+        let base = tempdir().unwrap();
+        let evil_target = tempdir().unwrap();
+
+        // Create evil file outside base
+        let evil_file = evil_target.path().join("secret.txt");
+        fs::write(&evil_file, "secret data").unwrap();
+
+        // Create a chain: link1 -> link2 -> evil_file
+        let subdir = base.path().join("subdir");
+        fs::create_dir_all(&subdir).unwrap();
+
+        let link2 = subdir.join("link2");
+        symlink(&evil_file, &link2).unwrap();
+
+        let link1 = base.path().join("link1");
+        symlink(&link2, &link1).unwrap();
+
+        // Following the chain should detect the escape
+        let result = validate_path_within_base(base.path(), Path::new("link1"));
+        assert_eq!(result, Err(PathTraversalError::EscapesBaseDirectory));
+    }
+
+    /// Test safe symlink that stays within base (Unix).
+    ///
+    /// Symlinks within the base directory pointing to other files within
+    /// the base directory should be allowed.
+    #[cfg(unix)]
+    #[test]
+    fn test_validate_path_within_base_safe_internal_symlink() {
+        use std::fs;
+        use std::os::unix::fs::symlink;
+        use tempfile::tempdir;
+
+        let base = tempdir().unwrap();
+
+        // Create a file in base
+        let real_file = base.path().join("real_file.txt");
+        fs::write(&real_file, "real data").unwrap();
+
+        // Create a symlink to that file, also in base
+        let link_file = base.path().join("link_file.txt");
+        symlink(&real_file, &link_file).unwrap();
+
+        // This should be allowed - stays within base
+        let result = validate_path_within_base(base.path(), Path::new("link_file.txt"));
+        assert!(result.is_ok());
+    }
+
+    /// Test safe symlink that stays within base (Windows).
+    #[cfg(windows)]
+    #[test]
+    fn test_validate_path_within_base_windows_safe_internal_symlink() {
+        use std::fs;
+        use std::os::windows::fs::symlink_file;
+        use tempfile::tempdir;
+
+        let base = tempdir().unwrap();
+
+        // Create a file in base
+        let real_file = base.path().join("real_file.txt");
+        fs::write(&real_file, "real data").unwrap();
+
+        // Create a symlink to that file, also in base
+        let link_file = base.path().join("link_file.txt");
+        if symlink_file(&real_file, &link_file).is_ok() {
+            // This should be allowed - stays within base
+            let result = validate_path_within_base(base.path(), Path::new("link_file.txt"));
+            assert!(result.is_ok());
+        }
     }
 
     // =========================================================================

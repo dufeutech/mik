@@ -22,6 +22,9 @@ serde_json = "1.0"
 # For testing path operations
 tempfile = "3.24"
 
+# For UUID validation in queue fuzzer
+uuid = "1.0"
+
 [[bin]]
 name = "fuzz_sanitize_file_path"
 path = "fuzz_targets/fuzz_sanitize_file_path.rs"
@@ -53,6 +56,41 @@ bench = false
 [[bin]]
 name = "fuzz_combined_security"
 path = "fuzz_targets/fuzz_combined_security.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_validate_path_within_base"
+path = "fuzz_targets/fuzz_validate_path_within_base.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_http_host_allowed"
+path = "fuzz_targets/fuzz_http_host_allowed.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_paths"
+path = "fuzz_targets/fuzz_storage_paths.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_sql_injection"
+path = "fuzz_targets/fuzz_sql_injection.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_queue_messages"
+path = "fuzz_targets/fuzz_queue_messages.rs"
 test = false
 doc = false
 bench = false

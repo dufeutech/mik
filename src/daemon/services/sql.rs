@@ -1,7 +1,4 @@
 //! Embedded SQL service using `SQLite` via rusqlite.
-
-// Allow unused - SQL service for future sidecar integration
-#![allow(dead_code)]
 //!
 //! Provides a simple SQL interface backed by `SQLite` for WASM instances to persist
 //! structured data. Database file is stored at `~/.mik/data.db` and created lazily
@@ -33,6 +30,9 @@
 //! use the async methods (`query_async`, `execute_async`, etc.) which automatically
 //! wrap operations in `spawn_blocking` to avoid blocking the async runtime.
 
+// Allow unused - SQL service for future sidecar integration
+#![allow(dead_code)]
+
 use anyhow::{Context, Result};
 use rusqlite::{Connection, params_from_iter, types::ValueRef};
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ pub enum Value {
 }
 
 impl From<ValueRef<'_>> for Value {
-    fn from(value_ref: ValueRef) -> Self {
+    fn from(value_ref: ValueRef<'_>) -> Self {
         match value_ref {
             ValueRef::Null => Value::Null,
             ValueRef::Integer(i) => Value::Integer(i),

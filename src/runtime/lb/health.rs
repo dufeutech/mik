@@ -1,4 +1,14 @@
 //! Health check implementation for backend servers.
+//!
+//! Provides periodic health monitoring of backend servers to ensure requests
+//! are only routed to healthy instances. Supports both HTTP and TCP health checks.
+//!
+//! # Key Types
+//!
+//! - [`HealthCheckConfig`] - Configuration for health check behavior (interval, timeout, thresholds)
+//! - [`HealthCheckType`] - Enum for HTTP (path-based) or TCP (connection-based) checks
+//!
+//! Health checks run in a background task and automatically update backend health status.
 
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
@@ -105,7 +115,7 @@ impl HealthCheck {
                     .timeout(config.timeout)
                     .pool_max_idle_per_host(1)
                     .build()
-                    .expect("Failed to create health check client"),
+                    .expect("failed to create HTTP client - check TLS configuration"),
             ),
             HealthCheckType::Tcp => None,
         };

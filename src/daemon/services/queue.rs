@@ -1,6 +1,4 @@
 //! Embedded queue service with optional persistence.
-#![allow(dead_code)] // Queue service for future sidecar integration
-#![allow(clippy::unnecessary_wraps)]
 //!
 //! Provides in-memory queue operations with optional redb persistence
 //! and simple pub/sub functionality for inter-instance communication.
@@ -77,6 +75,9 @@
 //! # Ok(())
 //! # }
 //! ```
+
+#![allow(dead_code)] // Queue service for future sidecar integration
+#![allow(clippy::unnecessary_wraps)]
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -417,7 +418,7 @@ impl QueueService {
             let write_txn = db.begin_write()?;
 
             {
-                const TABLE: redb::TableDefinition<&str, &[u8]> =
+                const TABLE: redb::TableDefinition<'static, &'static str, &'static [u8]> =
                     redb::TableDefinition::new("queues");
 
                 let mut table = write_txn.open_table(TABLE)?;
@@ -446,7 +447,7 @@ impl QueueService {
             let write_txn = db.begin_write()?;
 
             {
-                const TABLE: redb::TableDefinition<&str, &[u8]> =
+                const TABLE: redb::TableDefinition<'static, &'static str, &'static [u8]> =
                     redb::TableDefinition::new("queues");
                 let mut table = write_txn.open_table(TABLE)?;
                 table.remove(queue_name)?;
@@ -459,7 +460,8 @@ impl QueueService {
 
     /// Load all queues from disk (internal)
     fn load_from_disk(&mut self) -> Result<()> {
-        const TABLE: redb::TableDefinition<&str, &[u8]> = redb::TableDefinition::new("queues");
+        const TABLE: redb::TableDefinition<'static, &'static str, &'static [u8]> =
+            redb::TableDefinition::new("queues");
 
         if let Some(ref db_lock) = self.inner.db {
             let db = db_lock.read();

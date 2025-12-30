@@ -34,6 +34,11 @@ pub const MAX_SCRIPT_TIMEOUT_SECS: u64 = 30;
 /// Maximum WASM execution time (30 seconds).
 pub const MAX_WASM_TIMEOUT_SECS: u64 = 30;
 
+/// Default fuel budget per request (1 billion operations).
+/// Fuel provides deterministic CPU limiting complementing epoch-based preemption.
+/// Trade-off: ~10-20% overhead but guarantees deterministic execution limits.
+pub const DEFAULT_FUEL_BUDGET: u64 = 1_000_000_000;
+
 /// Minimum size for gzip compression (1 KB).
 /// Smaller responses don't benefit from compression overhead.
 pub const GZIP_MIN_SIZE: usize = 1024;

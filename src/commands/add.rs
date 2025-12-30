@@ -143,7 +143,12 @@ fn parse_oci_reference(spec: &str, explicit_tag: Option<&str>) -> Result<(String
     let (registry, path, tag) = if is_full_ref {
         // Full reference: ghcr.io/user/repo:tag or docker.io/library/image:tag
         let (ref_without_tag, tag) = split_tag(spec);
-        let first_slash = ref_without_tag.find('/').unwrap();
+        let Some(first_slash) = ref_without_tag.find('/') else {
+            // This shouldn't happen due to is_full_ref check, but handle gracefully
+            return Err(anyhow::anyhow!(
+                "Invalid OCI reference: missing path separator"
+            ));
+        };
         let registry = &ref_without_tag[..first_slash];
         let path = &ref_without_tag[first_slash + 1..];
         (registry, path, tag)

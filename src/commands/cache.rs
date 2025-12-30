@@ -1,4 +1,12 @@
 //! AOT cache management commands.
+//!
+//! Provides commands for managing the ahead-of-time (AOT) compilation cache:
+//! - `mik cache info` - Display cache statistics and location
+//! - `mik cache clean` - Remove stale entries to free disk space
+//! - `mik cache clear` - Remove all cached entries
+//!
+//! The AOT cache stores pre-compiled WASM components to avoid recompilation
+//! on subsequent runs, significantly improving startup time.
 
 use anyhow::Result;
 
