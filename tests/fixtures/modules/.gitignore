@@ -1,2 +1,3 @@
-# Built WASM test fixtures (rebuild with wasm-fixtures/build.sh)
-*.wasm
+# Allow WASM test fixtures to be committed
+# These are pre-built for CI and local testing
+# Rebuild with: cd wasm-fixtures && cargo component build --release --workspace

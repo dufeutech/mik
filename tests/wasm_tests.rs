@@ -274,7 +274,7 @@ async fn test_timeout_doesnt_block_other_requests() {
     let host = RealTestHost::builder()
         .with_modules_dir(fixtures_dir())
         .with_execution_timeout(2)
-        .with_max_concurrent_requests(5)
+        .with_max_concurrent_requests(10) // Must be >= default max_per_module_requests (10)
         .start()
         .await
         .expect("Failed to start host");

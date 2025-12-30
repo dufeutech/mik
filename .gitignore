@@ -9,6 +9,7 @@ target-linux/
 *.wasm
 # BUT track test fixture wasm files for integration testing
 !tests/fixtures/multilang/**/*.wasm
+!tests/fixtures/modules/*.wasm
 
 # IDE
 .vscode/

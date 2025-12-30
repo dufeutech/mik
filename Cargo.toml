@@ -83,10 +83,10 @@ wasmtime-wasi = "40"
 wasmtime-wasi-http = "40"
 
 # WASM manipulation (for stripping components)
-zip = "2"
+zip = "7"
 
 # HTTP server
-hyper = { version = "1.5", features = ["server", "http1", "http2"] }
+hyper = { version = "1.8", features = ["server", "http1", "http2"] }
 hyper-util = { version = "0.1", features = [
     "tokio",
     "server",
@@ -107,8 +107,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # OpenTelemetry (optional - otlp feature)
 opentelemetry = { version = "0.31", optional = true }
-opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"], optional = true }
-opentelemetry-otlp = { version = "0.31", features = ["grpc-tonic"], optional = true }
+opentelemetry_sdk = { version = "0.31", features = [
+    "rt-tokio",
+], optional = true }
+opentelemetry-otlp = { version = "0.31", features = [
+    "grpc-tonic",
+], optional = true }
 tracing-opentelemetry = { version = "0.32", optional = true }
 
 # Caching and concurrency
@@ -153,14 +157,21 @@ metrics-exporter-prometheus = { version = "0.18", default-features = false, feat
 
 # HTTP API (daemon)
 axum = "0.8"
-reqwest = { version = "0.12.28", features = ["rustls-tls"] }
+reqwest = { version = "0.13.1", default-features = false, features = ["native-tls", "json", "http2"] }
 
 # CPU detection for auto worker count
 num_cpus = "1.16"
 
 # === L7 Load Balancer ===
 # Using hyper + tower for cross-platform support
-tower = { version = "0.5", features = ["util", "load", "balance", "limit", "timeout", "retry"] }
+tower = { version = "0.5", features = [
+    "util",
+    "load",
+    "balance",
+    "limit",
+    "timeout",
+    "retry",
+] }
 hyper-timeout = "0.5"
 async-trait = "0.1"
 
@@ -194,8 +205,8 @@ harness = false
 # =============================================================================
 
 [profile.release]
-lto = true           # Link-time optimization for smaller, faster binaries
-opt-level = 3        # Maximum optimization
-codegen-units = 1    # Better optimization at cost of compile time
-strip = true         # Strip symbols for smaller binary
-panic = "abort"      # No unwinding for CLI tool
+lto = true        # Link-time optimization for smaller, faster binaries
+opt-level = 3     # Maximum optimization
+codegen-units = 1 # Better optimization at cost of compile time
+strip = true      # Strip symbols for smaller binary
+panic = "abort"   # No unwinding for CLI tool
