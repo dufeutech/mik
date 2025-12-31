@@ -25,34 +25,16 @@ pub const DEFAULT_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
 ///
 /// These errors indicate invalid configuration values that would prevent
 /// the host from operating correctly or safely.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 #[non_exhaustive]
 pub enum ConfigError {
-    /// Execution timeout is invalid (must be > 0 and <= 300).
+    #[error("invalid execution_timeout_secs={value}: {reason}")]
     Timeout { value: u64, reason: &'static str },
-    /// Memory limit is invalid (must be >= 1MB and <= 4GB).
+    #[error("invalid memory_limit_bytes={value}: {reason}")]
     MemoryLimit { value: usize, reason: &'static str },
-    /// Concurrency settings are invalid.
+    #[error("invalid concurrency configuration: {reason}")]
     Concurrency { reason: &'static str },
 }
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Timeout { value, reason } => {
-                write!(f, "invalid execution_timeout_secs={value}: {reason}")
-            },
-            Self::MemoryLimit { value, reason } => {
-                write!(f, "invalid memory_limit_bytes={value}: {reason}")
-            },
-            Self::Concurrency { reason } => {
-                write!(f, "invalid concurrency configuration: {reason}")
-            },
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {}
 
 /// Configuration for the host.
 #[derive(Debug, Clone)]

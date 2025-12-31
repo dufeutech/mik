@@ -10,6 +10,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::types::{JobExecution, JobState, JobsMap, MAX_HISTORY_ENTRIES, ScheduleConfig};
+use crate::daemon::metrics;
 
 /// Waits for an instance to become healthy with retry and backoff.
 ///
@@ -289,6 +290,11 @@ async fn record_execution(
     execution: &JobExecution,
     success: bool,
 ) {
+    // Record metrics
+    #[allow(clippy::cast_precision_loss)] // Duration in ms is safe to cast
+    let duration_secs = execution.duration_ms.map_or(0.0, |ms| ms as f64 / 1000.0);
+    metrics::record_cron_execution(name, success, duration_secs);
+
     let mut jobs_guard = jobs.write().await;
     if let Some(state) = jobs_guard.get_mut(name) {
         state.execution_count += 1;

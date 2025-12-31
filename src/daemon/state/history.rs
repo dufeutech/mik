@@ -87,7 +87,6 @@ impl StateStore {
     }
 
     /// Cleans up old job executions, keeping only the most recent N per job.
-    #[allow(dead_code)]
     pub fn cleanup_job_executions(&self, job_name: &str, keep: usize) -> Result<usize> {
         let executions = self.list_job_executions(job_name, usize::MAX)?;
 
@@ -143,6 +142,18 @@ impl StateStore {
     ) -> Result<Vec<JobExecution>> {
         let store = self.clone();
         tokio::task::spawn_blocking(move || store.list_job_executions(&job_name, limit))
+            .await
+            .context("Task join error")?
+    }
+
+    /// Cleans up old job executions asynchronously.
+    pub async fn cleanup_job_executions_async(
+        &self,
+        job_name: String,
+        keep: usize,
+    ) -> Result<usize> {
+        let store = self.clone();
+        tokio::task::spawn_blocking(move || store.cleanup_job_executions(&job_name, keep))
             .await
             .context("Task join error")?
     }

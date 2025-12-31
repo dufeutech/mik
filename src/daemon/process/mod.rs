@@ -23,13 +23,8 @@ mod log_rotation;
 mod types;
 mod utils;
 
-// Re-export public API for backward compatibility
-// Process management functions are used by `mik daemon` commands (up/down/ps/logs).
-// These will be actively used once background daemon mode is fully implemented.
-#[allow(dead_code)] // Used by `mik daemon` commands - pending full daemon mode implementation
+// Re-export public API
+// Process management functions are used by HTTP handlers for instance lifecycle.
 pub use health::{is_running, tail_log};
-#[allow(dead_code)]
-// Used by `mik up`/`mik down` commands - pending full daemon mode implementation
 pub use lifecycle::{kill_instance, spawn_instance};
-#[allow(dead_code)] // Used by `mik up` command - pending full daemon mode implementation
 pub use types::SpawnConfig;

@@ -19,7 +19,6 @@ pub mod script;
 pub mod security;
 pub mod spans;
 pub mod static_files;
-pub mod trace_context;
 pub mod types;
 pub mod wasm_executor;
 

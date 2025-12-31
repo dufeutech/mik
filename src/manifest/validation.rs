@@ -3,8 +3,8 @@
 //! This module contains all validation-related types and functions for
 //! ensuring manifest correctness.
 
-use std::fmt;
 use std::path::Path;
+use thiserror::Error;
 use url::Url;
 
 use super::types::{Dependency, DependencyDetail, Manifest};
@@ -14,61 +14,44 @@ use super::types::{Dependency, DependencyDetail, Manifest};
 // =============================================================================
 
 /// Validation errors for manifest fields.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ValidationError {
+    #[error("Project name is required in [project] section")]
     EmptyProjectName,
-    InvalidProjectName(String),
-    EmptyVersion,
-    InvalidVersion(String),
-    InvalidPort,
-    EmptyModulesDir,
-    DependencyError(String),
-}
 
-impl fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EmptyProjectName => {
-                write!(f, "Project name is required in [project] section")
-            },
-            Self::InvalidProjectName(name) => {
-                write!(
-                    f,
-                    "Invalid project name '{name}'. Names must:\n  \
-                     - Start with a letter or underscore\n  \
-                     - Contain only letters, numbers, hyphens, and underscores\n  \
-                     - Be between 1 and 64 characters\n  \
-                     Example: 'my-component' or 'my_component'"
-                )
-            },
-            Self::EmptyVersion => {
-                write!(f, "Project version is required in [project] section")
-            },
-            Self::InvalidVersion(version) => {
-                write!(
-                    f,
-                    "Invalid version '{version}'. Version must follow semantic versioning (e.g., '0.1.0', '1.2.3')\n  \
-                     Format: MAJOR.MINOR.PATCH\n  \
-                     See: https://semver.org/"
-                )
-            },
-            Self::InvalidPort => {
-                write!(
-                    f,
-                    "Server port cannot be 0. Use a valid port number (1-65535)\n  \
-                     Common ports: 3000 (default), 8080, 8000"
-                )
-            },
-            Self::EmptyModulesDir => {
-                write!(
-                    f,
-                    "Server modules directory cannot be empty\n  \
-                     Fix: Set modules = \"modules/\" in [server] section"
-                )
-            },
-            Self::DependencyError(msg) => write!(f, "{msg}"),
-        }
-    }
+    #[error(
+        "Invalid project name '{0}'. Names must:\n  \
+         - Start with a letter or underscore\n  \
+         - Contain only letters, numbers, hyphens, and underscores\n  \
+         - Be between 1 and 64 characters\n  \
+         Example: 'my-component' or 'my_component'"
+    )]
+    InvalidProjectName(String),
+
+    #[error("Project version is required in [project] section")]
+    EmptyVersion,
+
+    #[error(
+        "Invalid version '{0}'. Version must follow semantic versioning (e.g., '0.1.0', '1.2.3')\n  \
+         Format: MAJOR.MINOR.PATCH\n  \
+         See: https://semver.org/"
+    )]
+    InvalidVersion(String),
+
+    #[error(
+        "Server port cannot be 0. Use a valid port number (1-65535)\n  \
+         Common ports: 3000 (default), 8080, 8000"
+    )]
+    InvalidPort,
+
+    #[error(
+        "Server modules directory cannot be empty\n  \
+         Fix: Set modules = \"modules/\" in [server] section"
+    )]
+    EmptyModulesDir,
+
+    #[error("{0}")]
+    DependencyError(String),
 }
 
 // =============================================================================

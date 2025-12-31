@@ -112,7 +112,10 @@ pub(crate) async fn sql_execute(
     }))
 }
 
-/// POST /sql/batch - Execute a batch of statements.
+/// POST /sql/batch - Execute a batch of statements atomically.
+///
+/// All statements are executed in a single transaction. If any statement fails,
+/// all changes are rolled back. This ensures data consistency for related operations.
 pub(crate) async fn sql_batch(
     State(state): State<SharedState>,
     Json(req): Json<SqlBatchRequest>,
@@ -124,15 +127,26 @@ pub(crate) async fn sql_batch(
         state.sql.clone()
     };
 
-    let mut results = Vec::with_capacity(req.statements.len());
-    for stmt in &req.statements {
-        let params: Vec<SqlValue> = stmt.params.iter().map(json_to_sql_value).collect();
-        let rows_affected = sql.execute_async(stmt.sql.clone(), params).await?;
-        results.push(SqlExecuteResponse {
-            rows_affected: rows_affected as u64,
-        });
-    }
+    // Convert statements to (sql, params) tuples for atomic execution
+    let statements: Vec<(String, Vec<SqlValue>)> = req
+        .statements
+        .iter()
+        .map(|stmt| {
+            let params = stmt.params.iter().map(json_to_sql_value).collect();
+            (stmt.sql.clone(), params)
+        })
+        .collect();
+
+    // Execute all statements atomically in a transaction
+    let rows_affected_list = sql.execute_batch_atomic_async(statements).await?;
     metrics::record_sql_query("batch", start.elapsed().as_secs_f64());
+
+    let results = rows_affected_list
+        .into_iter()
+        .map(|rows_affected| SqlExecuteResponse {
+            rows_affected: rows_affected as u64,
+        })
+        .collect();
 
     Ok(Json(SqlBatchResponse { results }))
 }

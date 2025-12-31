@@ -9,12 +9,11 @@ use std::collections::BTreeMap;
 use super::defaults::{
     default_auto, default_execution_timeout, default_health_check_interval_ms,
     default_health_check_path, default_health_check_timeout_ms, default_health_check_type,
-    default_healthy_threshold, default_http_handler, default_http2_only, default_lb_algorithm,
-    default_lb_enabled, default_max_body_size_mb, default_max_connections_per_backend,
-    default_modules_dir, default_pool_idle_timeout_secs, default_port,
-    default_request_timeout_secs, default_service_name, default_shutdown_timeout,
-    default_tcp_keepalive_secs, default_tracing_enabled, default_unhealthy_threshold,
-    default_version,
+    default_healthy_threshold, default_http_handler, default_http2_only, default_lb_enabled,
+    default_max_body_size_mb, default_max_connections_per_backend, default_modules_dir,
+    default_pool_idle_timeout_secs, default_port, default_request_timeout_secs,
+    default_service_name, default_shutdown_timeout, default_tcp_keepalive_secs,
+    default_tracing_enabled, default_unhealthy_threshold, default_version,
 };
 
 // =============================================================================
@@ -251,7 +250,6 @@ impl Default for CompositionConfig {
 /// ```toml
 /// [lb]
 /// enabled = true
-/// algorithm = "round_robin"
 /// health_check_type = "http"  # or "tcp"
 /// health_check_interval_ms = 5000
 /// health_check_timeout_ms = 2000
@@ -266,11 +264,6 @@ pub struct LbConfig {
     /// Enable load balancing (default: false).
     #[serde(default = "default_lb_enabled")]
     pub enabled: bool,
-    /// Load balancing algorithm (default: `round_robin`).
-    ///
-    /// Options: `round_robin`, `weighted`, `consistent_hash`
-    #[serde(default = "default_lb_algorithm")]
-    pub algorithm: String,
     /// Type of health check to perform (default: `http`).
     ///
     /// Options:
@@ -317,7 +310,6 @@ impl Default for LbConfig {
     fn default() -> Self {
         Self {
             enabled: default_lb_enabled(),
-            algorithm: default_lb_algorithm(),
             health_check_type: default_health_check_type(),
             health_check_interval_ms: default_health_check_interval_ms(),
             health_check_timeout_ms: default_health_check_timeout_ms(),

@@ -98,6 +98,10 @@ pub struct JobInfo {
     pub cron: String,
     /// Module path.
     pub module: String,
+    /// HTTP method (GET, POST, etc.).
+    pub method: String,
+    /// Request path.
+    pub path: String,
     /// Whether the job is enabled.
     pub enabled: bool,
     /// Next scheduled run time.
@@ -142,6 +146,8 @@ impl JobState {
             name: self.config.name.clone(),
             cron: self.config.cron.clone(),
             module: self.config.module.display().to_string(),
+            method: self.config.method.clone(),
+            path: self.config.path.clone(),
             enabled: self.config.enabled,
             next_run: None, // Would need scheduler API to get this
             last_execution: self.history.back().cloned(),

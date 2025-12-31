@@ -40,13 +40,6 @@
 //! - `POST /cron/:name/trigger` - Manually trigger a job
 //! - `GET /cron/:name/history` - Get job execution history
 //!
-//! ### Service Discovery (`/services`)
-//! - `GET /services` - List registered services (with optional `?service_type` filter)
-//! - `POST /services` - Register a new service
-//! - `GET /services/:name` - Get service details
-//! - `DELETE /services/:name` - Unregister a service
-//! - `POST /services/:name/heartbeat` - Update service heartbeat
-//!
 //! ### Observability
 //! - `GET /metrics` - Prometheus metrics
 //!
@@ -73,7 +66,6 @@
 //! - `/health` - Always accessible
 //! - `/metrics` - Always accessible for Prometheus scraping
 
-use super::error as daemon_error;
 use anyhow::{Context, Result};
 use axum::{
     Json, Router,
@@ -91,6 +83,7 @@ use tokio::sync::RwLock;
 
 use crate::daemon::cron::CronScheduler;
 use crate::daemon::metrics;
+use crate::daemon::otlp;
 use crate::daemon::process::{self, SpawnConfig};
 use crate::daemon::services::{kv::KvStore, sql::SqlService, storage::StorageService};
 use crate::daemon::state::{Instance, StateStore, Status};
@@ -122,12 +115,6 @@ use handlers::{
     kv_set,
     list_instances,
     restart_instance,
-    // Services
-    services_delete,
-    services_get,
-    services_heartbeat,
-    services_list,
-    services_register,
     // SQL
     sql_batch,
     sql_execute,
@@ -257,13 +244,6 @@ pub async fn serve(port: u16, state_path: PathBuf) -> Result<()> {
         )
         .route("/cron/{name}/trigger", post(cron_trigger))
         .route("/cron/{name}/history", get(cron_history))
-        // Service discovery
-        .route("/services", get(services_list).post(services_register))
-        .route(
-            "/services/{name}",
-            get(services_get).delete(services_delete),
-        )
-        .route("/services/{name}/heartbeat", post(services_heartbeat))
         // Observability
         .route("/metrics", get(metrics_endpoint))
         // System endpoints
@@ -413,6 +393,17 @@ async fn graceful_shutdown(state: SharedState) {
     if stopped_count > 0 {
         tracing::info!(count = stopped_count, "Stopped running instances");
     }
+
+    // Stop the cron scheduler
+    {
+        let mut state = state.write().await;
+        if let Err(e) = state.cron.shutdown().await {
+            tracing::warn!(error = %e, "Failed to stop cron scheduler");
+        }
+    }
+
+    // Flush OTLP traces before exit
+    otlp::shutdown();
 
     tracing::info!("Graceful shutdown complete");
 }
@@ -764,19 +755,6 @@ impl From<std::io::Error> for AppError {
     }
 }
 
-impl From<daemon_error::Error> for AppError {
-    fn from(err: daemon_error::Error) -> Self {
-        let status = err.status_code();
-        let message = err.to_string();
-        match status {
-            404 => Self::NotFound(message),
-            400 => Self::BadRequest(message),
-            409 => Self::Conflict(message),
-            _ => Self::Internal(message),
-        }
-    }
-}
-
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -829,13 +807,6 @@ mod tests {
             .route("/storage/{*path}", put(storage_put))
             .route("/storage/{*path}", delete(storage_delete))
             .route("/storage/{*path}", head(storage_head))
-            // Service discovery
-            .route("/services", get(services_list).post(services_register))
-            .route(
-                "/services/{name}",
-                get(services_get).delete(services_delete),
-            )
-            .route("/services/{name}/heartbeat", post(services_heartbeat))
             // System endpoints
             .route("/health", get(health))
             .route("/version", get(version))
@@ -1386,340 +1357,6 @@ mod tests {
         let response = app.oneshot(request).await.unwrap();
         // Should return 422 Unprocessable Entity or 400 Bad Request
         assert!(response.status().is_client_error());
-    }
-
-    // =========================================================================
-    // Service Discovery Tests
-    // =========================================================================
-
-    #[tokio::test]
-    async fn test_services_list_empty() {
-        let app = create_test_app().await;
-
-        let request = Request::builder()
-            .uri("/services")
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let list: ListServicesResponse = serde_json::from_slice(&body).unwrap();
-        assert!(list.services.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_services_register_and_get() {
-        let app = create_test_app().await;
-
-        // Register a service
-        let register_request = Request::builder()
-            .method(Method::POST)
-            .uri("/services")
-            .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "test-sidecar",
-                "service_type": "sql",
-                "url": "http://localhost:9001",
-                "description": "Test SQL sidecar"
-            }"#,
-            ))
-            .unwrap();
-
-        let response = app.clone().oneshot(register_request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let register_resp: RegisterServiceResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(register_resp.name, "test-sidecar");
-        assert!(register_resp.registered);
-
-        // Get the service
-        let get_request = Request::builder()
-            .uri("/services/test-sidecar")
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.clone().oneshot(get_request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let service: ServiceResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(service.name, "test-sidecar");
-        assert_eq!(service.service_type, "sql");
-        assert_eq!(service.url, "http://localhost:9001");
-        assert_eq!(service.description, Some("Test SQL sidecar".to_string()));
-        assert!(service.healthy);
-    }
-
-    #[tokio::test]
-    async fn test_services_list_with_filter() {
-        let app = create_test_app().await;
-
-        // Register a SQL service
-        let register_sql = Request::builder()
-            .method(Method::POST)
-            .uri("/services")
-            .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "sql-sidecar",
-                "service_type": "sql",
-                "url": "http://localhost:9001"
-            }"#,
-            ))
-            .unwrap();
-        app.clone().oneshot(register_sql).await.unwrap();
-
-        // Register a KV service
-        let register_kv = Request::builder()
-            .method(Method::POST)
-            .uri("/services")
-            .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "kv-sidecar",
-                "service_type": "kv",
-                "url": "http://localhost:9002"
-            }"#,
-            ))
-            .unwrap();
-        app.clone().oneshot(register_kv).await.unwrap();
-
-        // List all services
-        let list_all = Request::builder()
-            .uri("/services")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.clone().oneshot(list_all).await.unwrap();
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let list: ListServicesResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(list.services.len(), 2);
-
-        // Filter by SQL type
-        let list_sql = Request::builder()
-            .uri("/services?service_type=sql")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.clone().oneshot(list_sql).await.unwrap();
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let list: ListServicesResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(list.services.len(), 1);
-        assert_eq!(list.services[0].service_type, "sql");
-
-        // Filter by KV type
-        let list_kv = Request::builder()
-            .uri("/services?service_type=kv")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(list_kv).await.unwrap();
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let list: ListServicesResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(list.services.len(), 1);
-        assert_eq!(list.services[0].service_type, "kv");
-    }
-
-    #[tokio::test]
-    async fn test_services_get_not_found() {
-        let app = create_test_app().await;
-
-        let request = Request::builder()
-            .uri("/services/nonexistent")
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
-    }
-
-    #[tokio::test]
-    async fn test_services_delete() {
-        let app = create_test_app().await;
-
-        // Register a service
-        let register_request = Request::builder()
-            .method(Method::POST)
-            .uri("/services")
-            .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "to-delete",
-                "service_type": "storage",
-                "url": "http://localhost:9003"
-            }"#,
-            ))
-            .unwrap();
-        app.clone().oneshot(register_request).await.unwrap();
-
-        // Verify it exists
-        let get_request = Request::builder()
-            .uri("/services/to-delete")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.clone().oneshot(get_request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        // Delete the service
-        let delete_request = Request::builder()
-            .method(Method::DELETE)
-            .uri("/services/to-delete")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.clone().oneshot(delete_request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let delete_resp: DeleteServiceResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(delete_resp.name, "to-delete");
-        assert!(delete_resp.deleted);
-
-        // Verify it's gone
-        let get_request = Request::builder()
-            .uri("/services/to-delete")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(get_request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
-    }
-
-    #[tokio::test]
-    async fn test_services_delete_nonexistent() {
-        let app = create_test_app().await;
-
-        let request = Request::builder()
-            .method(Method::DELETE)
-            .uri("/services/nonexistent")
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let delete_resp: DeleteServiceResponse = serde_json::from_slice(&body).unwrap();
-        assert!(!delete_resp.deleted);
-    }
-
-    #[tokio::test]
-    async fn test_services_heartbeat() {
-        let app = create_test_app().await;
-
-        // Register a service
-        let register_request = Request::builder()
-            .method(Method::POST)
-            .uri("/services")
-            .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "heartbeat-test",
-                "service_type": "storage",
-                "url": "http://localhost:9004"
-            }"#,
-            ))
-            .unwrap();
-        app.clone().oneshot(register_request).await.unwrap();
-
-        // Send heartbeat
-        let heartbeat_request = Request::builder()
-            .method(Method::POST)
-            .uri("/services/heartbeat-test/heartbeat")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.clone().oneshot(heartbeat_request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let heartbeat_resp: HeartbeatResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(heartbeat_resp.name, "heartbeat-test");
-        assert!(heartbeat_resp.updated);
-    }
-
-    #[tokio::test]
-    async fn test_services_heartbeat_not_found() {
-        let app = create_test_app().await;
-
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri("/services/nonexistent/heartbeat")
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
-    }
-
-    #[tokio::test]
-    async fn test_services_register_invalid_url() {
-        let app = create_test_app().await;
-
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri("/services")
-            .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "bad-url",
-                "service_type": "sql",
-                "url": "not-a-valid-url"
-            }"#,
-            ))
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    }
-
-    #[tokio::test]
-    async fn test_services_custom_type() {
-        let app = create_test_app().await;
-
-        // Register with custom type
-        let register_request = Request::builder()
-            .method(Method::POST)
-            .uri("/services")
-            .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "custom-sidecar",
-                "service_type": "custom:metrics",
-                "url": "http://localhost:9005"
-            }"#,
-            ))
-            .unwrap();
-        let response = app.clone().oneshot(register_request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        // Verify the type
-        let get_request = Request::builder()
-            .uri("/services/custom-sidecar")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(get_request).await.unwrap();
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let service: ServiceResponse = serde_json::from_slice(&body).unwrap();
-        assert_eq!(service.service_type, "custom:metrics");
     }
 
     // =========================================================================

@@ -37,8 +37,8 @@ pub(crate) async fn cron_list(
                 name: job.name.clone(),
                 cron: job.cron.clone(),
                 module: job.module.clone(),
-                method: "GET".to_string(), // Default, could be stored in JobInfo
-                path: "/".to_string(),     // Default, could be stored in JobInfo
+                method: job.method.clone(),
+                path: job.path.clone(),
                 enabled: job.enabled,
                 status: status_str.to_string(),
                 last_run: job
@@ -235,6 +235,15 @@ pub(crate) async fn cron_trigger(
         .await
     {
         tracing::warn!(job = %name, error = %e, "Failed to persist job execution");
+    }
+
+    // Cleanup old executions (keep last 100)
+    if let Err(e) = state
+        .store
+        .cleanup_job_executions_async(name.clone(), 100)
+        .await
+    {
+        tracing::warn!(job = %name, error = %e, "Failed to cleanup old executions");
     }
 
     Ok(Json(CronTriggerResponse {

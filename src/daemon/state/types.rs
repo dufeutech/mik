@@ -1,66 +1,12 @@
 //! Type definitions for persistent state management.
 //!
 //! Contains the core data structures used by the state store:
-//! - `ServiceType` - Sidecar service classification
-//! - `Sidecar` - Registered sidecar service metadata
 //! - `Status` - Runtime status of WASM instances
 //! - `Instance` - WASM instance metadata
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-/// Type of sidecar service
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ServiceType {
-    /// Key-value store (Redis-like)
-    Kv,
-    /// SQL database (SQLite/Postgres)
-    Sql,
-    /// Object storage (S3-like)
-    Storage,
-    /// Message queue
-    Queue,
-    /// Custom service type
-    Custom(String),
-}
-
-impl std::fmt::Display for ServiceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Kv => write!(f, "kv"),
-            Self::Sql => write!(f, "sql"),
-            Self::Storage => write!(f, "storage"),
-            Self::Queue => write!(f, "queue"),
-            Self::Custom(name) => write!(f, "custom:{name}"),
-        }
-    }
-}
-
-/// Metadata for a registered sidecar service
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Sidecar {
-    /// Unique service name (e.g., "mikcar-primary", "redis-cache")
-    pub name: String,
-    /// Type of service provided
-    pub service_type: ServiceType,
-    /// Base URL for the service (e.g., `http://localhost:9001`)
-    pub url: String,
-    /// Optional description
-    #[serde(default)]
-    pub description: Option<String>,
-    /// Timestamp when service was registered
-    pub registered_at: DateTime<Utc>,
-    /// Last heartbeat timestamp (updated by health checks)
-    pub last_heartbeat: DateTime<Utc>,
-    /// Whether the service is currently healthy
-    #[serde(default = "default_healthy")]
-    pub healthy: bool,
-}
-
-const fn default_healthy() -> bool {
-    true
-}
 
 /// Runtime status of a WASM instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

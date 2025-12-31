@@ -35,9 +35,6 @@
 //! - `scheduler` - Core `CronScheduler` implementation
 //! - `execution` - Job execution and health check logic
 
-// Allow unused - cron scheduler for future scheduled job support
-#![allow(dead_code)]
-
 mod execution;
 mod manifest;
 mod scheduler;

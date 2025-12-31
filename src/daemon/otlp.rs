@@ -74,24 +74,13 @@ impl OtlpConfig {
 }
 
 /// Error initializing OTLP.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum OtlpError {
-    /// Failed to initialize exporter
+    #[error("failed to init OTLP exporter: {0}")]
     ExporterInit(String),
-    /// Already initialized
+    #[error("OTLP already initialized")]
     AlreadyInitialized,
 }
-
-impl std::fmt::Display for OtlpError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ExporterInit(e) => write!(f, "failed to init OTLP exporter: {e}"),
-            Self::AlreadyInitialized => write!(f, "OTLP already initialized"),
-        }
-    }
-}
-
-impl std::error::Error for OtlpError {}
 
 /// Initialize the `OpenTelemetry` tracer provider.
 fn init_tracer_provider(config: &OtlpConfig) -> Result<SdkTracerProvider, OtlpError> {
@@ -158,7 +147,6 @@ pub fn init_with_otlp(config: OtlpConfig) -> Result<(), OtlpError> {
 /// Shutdown the OTLP tracer (flush pending spans).
 ///
 /// Call this before application exit to ensure all spans are exported.
-#[allow(dead_code)] // For graceful shutdown integration
 pub fn shutdown() {
     if let Some(provider) = TRACER_PROVIDER.get()
         && let Err(e) = provider.shutdown()

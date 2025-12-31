@@ -2,13 +2,7 @@
 //!
 //! Defines error types returned when the circuit breaker rejects requests.
 
-/// Error returned when circuit breaker rejects a request.
-#[derive(Debug, Clone)]
-pub struct CircuitOpenError {
-    pub key: String,
-    pub failure_count: u32,
-    pub reason: CircuitOpenReason,
-}
+use thiserror::Error;
 
 /// Reason why the circuit breaker rejected a request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,25 +13,14 @@ pub enum CircuitOpenReason {
     ProbeInFlight,
 }
 
-impl std::fmt::Display for CircuitOpenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.reason {
-            CircuitOpenReason::Open => {
-                write!(
-                    f,
-                    "Circuit breaker open for '{}' (failures: {})",
-                    self.key, self.failure_count
-                )
-            },
-            CircuitOpenReason::ProbeInFlight => {
-                write!(
-                    f,
-                    "Circuit breaker for '{}' is testing recovery (probe in flight)",
-                    self.key
-                )
-            },
-        }
-    }
+/// Error returned when circuit breaker rejects a request.
+#[derive(Debug, Clone, Error)]
+#[error("{}", match .reason {
+    CircuitOpenReason::Open => format!("Circuit breaker open for '{}' (failures: {})", .key, .failure_count),
+    CircuitOpenReason::ProbeInFlight => format!("Circuit breaker for '{}' is testing recovery (probe in flight)", .key),
+})]
+pub struct CircuitOpenError {
+    pub key: String,
+    pub failure_count: u32,
+    pub reason: CircuitOpenReason,
 }
-
-impl std::error::Error for CircuitOpenError {}

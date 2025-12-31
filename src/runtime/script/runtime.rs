@@ -4,12 +4,17 @@
 
 use rquickjs::{Context as JsContext, FromJs, Function, Object, Runtime, Value as JsValue};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use super::bindings::{HostBridge, HostBridgeGuard, native_host_call};
 use super::context::{js_to_json, preprocess_script};
 
 /// Maximum iterations to wait for async Promise resolution.
 const MAX_ASYNC_ITERATIONS: usize = 10000;
+
+/// Wall-clock timeout for async Promise resolution (5 seconds).
+/// Prevents DoS from scripts that create infinite microtasks.
+const ASYNC_TIMEOUT_SECS: u64 = 5;
 
 /// Run `JavaScript` with `host.call()` capability (blocking).
 pub(crate) fn run_js_script(
@@ -82,7 +87,16 @@ fn resolve_async_result<'js>(
     ctx: &rquickjs::Ctx<'js>,
     result_obj: &Object<'js>,
 ) -> std::result::Result<serde_json::Value, String> {
+    let deadline = Instant::now() + Duration::from_secs(ASYNC_TIMEOUT_SECS);
+
     for _ in 0..MAX_ASYNC_ITERATIONS {
+        // Wall-clock timeout check (prevents infinite microtask DoS)
+        if Instant::now() > deadline {
+            return Err(format!(
+                "Async script timeout: Promise did not resolve within {ASYNC_TIMEOUT_SECS}s wall-clock limit"
+            ));
+        }
+
         // Check if resolved
         let resolved = result_obj.get::<_, bool>("resolved").unwrap_or(false);
 

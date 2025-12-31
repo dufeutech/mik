@@ -1,5 +1,4 @@
 //! Prometheus metrics for the mik daemon.
-#![allow(dead_code)] // Metrics infrastructure for future observability
 #![allow(clippy::cast_precision_loss)]
 //!
 //! Provides observability through Prometheus-compatible metrics.
@@ -19,7 +18,6 @@
 //! - `mik_kv_operations_total` - KV operations (labels: operation)
 //! - `mik_sql_queries_total` - SQL queries (labels: type)
 //! - `mik_storage_operations_total` - Storage operations (labels: operation)
-//! - `mik_queue_operations_total` - Queue operations (labels: operation, queue)
 //!
 //! ## Scheduler Metrics
 //! - `mik_cron_executions_total` - Cron job executions (labels: job, success)
@@ -84,10 +82,6 @@ fn register_metrics() {
         "mik_storage_bytes_total",
         "Total bytes transferred (read/write)"
     );
-
-    // Queue metrics
-    describe_counter!("mik_queue_operations_total", "Total queue operations");
-    describe_gauge!("mik_queue_length", "Current queue length");
 
     // Cron metrics
     describe_counter!("mik_cron_executions_total", "Total cron job executions");
@@ -218,29 +212,6 @@ pub fn record_storage_operation(operation: &str, bytes: Option<u64>) {
         )
         .increment(bytes);
     }
-}
-
-// =============================================================================
-// Queue Metrics
-// =============================================================================
-
-/// Records a queue operation.
-pub fn record_queue_operation(operation: &str, queue: &str) {
-    counter!(
-        "mik_queue_operations_total",
-        "operation" => operation.to_string(),
-        "queue" => queue.to_string()
-    )
-    .increment(1);
-}
-
-/// Sets the current queue length.
-pub fn set_queue_length(queue: &str, length: usize) {
-    gauge!(
-        "mik_queue_length",
-        "queue" => queue.to_string()
-    )
-    .set(length as f64);
 }
 
 // =============================================================================

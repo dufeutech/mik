@@ -699,7 +699,6 @@ version = "invalid"
     fn test_lb_config_defaults() {
         let config = LbConfig::default();
         assert!(!config.enabled);
-        assert_eq!(config.algorithm, "round_robin");
         assert_eq!(config.health_check_type, "http");
         assert_eq!(config.health_check_interval_ms, 5000);
         assert_eq!(config.health_check_timeout_ms, 2000);
@@ -722,7 +721,6 @@ version = "0.1.0"
 
 [lb]
 enabled = true
-algorithm = "weighted"
 health_check_interval_ms = 10000
 health_check_timeout_ms = 3000
 health_check_path = "/healthz"
@@ -734,7 +732,6 @@ max_connections_per_backend = 200
         let manifest: Manifest = toml::from_str(toml).unwrap();
         let lb = manifest.lb.expect("lb config should be present");
         assert!(lb.enabled);
-        assert_eq!(lb.algorithm, "weighted");
         assert_eq!(lb.health_check_interval_ms, 10000);
         assert_eq!(lb.health_check_timeout_ms, 3000);
         assert_eq!(lb.health_check_path, "/healthz");
@@ -754,12 +751,10 @@ version = "0.1.0"
 
 [lb]
 enabled = true
-algorithm = "consistent_hash"
 "#;
         let manifest: Manifest = toml::from_str(toml).unwrap();
         let lb = manifest.lb.expect("lb config should be present");
         assert!(lb.enabled);
-        assert_eq!(lb.algorithm, "consistent_hash");
         // Check defaults are applied
         assert_eq!(lb.health_check_type, "http");
         assert_eq!(lb.health_check_interval_ms, 5000);

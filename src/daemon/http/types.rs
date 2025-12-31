@@ -3,7 +3,7 @@
 //! This module contains all the request/response types used by the daemon HTTP API handlers.
 
 use crate::daemon::services::storage::ObjectMeta;
-use crate::daemon::state::{Instance, Sidecar, Status};
+use crate::daemon::state::{Instance, Status};
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
@@ -374,85 +374,6 @@ pub struct CronUpdateRequest {
 pub struct CronUpdateResponse {
     pub name: String,
     pub enabled: bool,
-    pub updated: bool,
-}
-
-// =============================================================================
-// Service Discovery Types
-// =============================================================================
-
-/// Request to register a sidecar service.
-#[derive(Debug, Deserialize)]
-pub struct RegisterServiceRequest {
-    /// Unique service name (e.g., "mikcar-primary")
-    pub name: String,
-    /// Service type: "kv", "sql", "storage", "queue", or "custom:name"
-    pub service_type: String,
-    /// Base URL for the service (e.g., `http://localhost:9001`)
-    pub url: String,
-    /// Optional description
-    #[serde(default)]
-    pub description: Option<String>,
-}
-
-/// Response for a registered service.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ServiceResponse {
-    pub name: String,
-    pub service_type: String,
-    pub url: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    pub registered_at: String,
-    pub last_heartbeat: String,
-    pub healthy: bool,
-}
-
-impl From<&Sidecar> for ServiceResponse {
-    fn from(s: &Sidecar) -> Self {
-        Self {
-            name: s.name.clone(),
-            service_type: s.service_type.to_string(),
-            url: s.url.clone(),
-            description: s.description.clone(),
-            registered_at: s.registered_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-            last_heartbeat: s.last_heartbeat.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-            healthy: s.healthy,
-        }
-    }
-}
-
-/// Response for listing services.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ListServicesResponse {
-    pub services: Vec<ServiceResponse>,
-}
-
-/// Query parameters for listing services.
-#[derive(Debug, Deserialize)]
-pub struct ListServicesQuery {
-    /// Filter by service type (e.g., "kv", "sql")
-    pub service_type: Option<String>,
-}
-
-/// Response for service registration.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RegisterServiceResponse {
-    pub name: String,
-    pub registered: bool,
-}
-
-/// Response for service deletion.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DeleteServiceResponse {
-    pub name: String,
-    pub deleted: bool,
-}
-
-/// Response for heartbeat.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct HeartbeatResponse {
-    pub name: String,
     pub updated: bool,
 }
 

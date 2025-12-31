@@ -4,9 +4,6 @@
 //! Uses the `notify` crate for cross-platform file system watching.
 //! Includes debouncing to prevent duplicate events from rapid file changes.
 
-// Allow unused - hot reload infrastructure for future development mode
-#![allow(dead_code)]
-
 use anyhow::{Context, Result};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
@@ -107,20 +104,6 @@ impl ModuleWatcher {
     /// Returns `None` if no event is available.
     pub fn try_recv(&self) -> Option<WatchEvent> {
         self.receiver.try_recv().ok()
-    }
-
-    /// Receives a watch event, blocking until one is available.
-    pub fn recv(&self) -> Result<WatchEvent> {
-        self.receiver
-            .recv()
-            .context("Watch channel closed unexpectedly")
-    }
-
-    /// Receives a watch event with timeout.
-    ///
-    /// Returns `None` if timeout expires before an event is received.
-    pub fn recv_timeout(&self, timeout: Duration) -> Option<WatchEvent> {
-        self.receiver.recv_timeout(timeout).ok()
     }
 }
 
@@ -250,6 +233,7 @@ impl DebouncedEvents {
     }
 
     /// Returns true if there are any pending events.
+    #[allow(dead_code)] // Utility method for future polling API
     fn has_pending(&self) -> bool {
         !self.pending.is_empty() || self.config_pending.is_some()
     }

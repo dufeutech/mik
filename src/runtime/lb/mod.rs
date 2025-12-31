@@ -1,14 +1,7 @@
 //! L7 Load Balancer for mik runtime.
 //!
-//! This module provides a high-performance HTTP load balancer that distributes
-//! requests across multiple backend workers. It supports:
-//!
-//! - Round-robin load balancing
-//! - Weighted round-robin load balancing (proportional traffic distribution)
-//! - Consistent hashing for sticky sessions (path, header, or client IP based)
-//! - Health checks with automatic failover
-//! - Connection pooling via reqwest
-//! - Graceful shutdown with request draining
+//! This module provides an HTTP load balancer that distributes requests across
+//! multiple backend workers using round-robin selection with health checks.
 //!
 //! # Architecture
 //!
@@ -17,39 +10,17 @@
 //!                           -> [Worker :3002]
 //!                           -> [Worker :3003]
 //! ```
-//!
-//! # Example
-//!
-//! ```ignore
-//! use mik::runtime::lb::{LoadBalancer, Backend};
-//!
-//! let backends = vec![
-//!     Backend::new("127.0.0.1:3001"),
-//!     Backend::new("127.0.0.1:3002"),
-//! ];
-//!
-//! let lb = LoadBalancer::new(backends);
-//! lb.serve("0.0.0.0:3000").await?;
-//! ```
 
 mod backend;
 mod circuit_breaker;
 mod health;
 pub mod metrics;
 mod proxy;
-mod reload;
 mod selection;
 
-#[allow(unused_imports)]
-pub use backend::{Backend, BackendState};
-#[allow(unused_imports)]
-pub use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitBreakerState};
+pub use backend::Backend;
 pub use health::{HealthCheckConfig, HealthCheckType};
-#[allow(unused_imports)]
-pub use metrics::LbMetrics;
 pub use proxy::ProxyService;
-#[allow(unused_imports)]
-pub use reload::{ReloadConfig, ReloadHandle, ReloadManager, ReloadResult, ReloadSignal};
 pub use selection::RoundRobin;
 
 use std::net::SocketAddr;
@@ -132,7 +103,6 @@ impl LoadBalancerConfig {
     ///     vec!["127.0.0.1:3001".to_string()],
     /// );
     /// ```
-    #[allow(dead_code)]
     pub fn from_manifest(
         lb_config: &LbConfig,
         listen_addr: SocketAddr,
@@ -218,21 +188,6 @@ impl LoadBalancer {
         })
     }
 
-    /// Create a load balancer from a list of backend addresses.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the HTTP client cannot be created.
-    #[allow(dead_code)]
-    pub fn from_backends(listen_addr: SocketAddr, backends: Vec<String>) -> Result<Self> {
-        let config = LoadBalancerConfig {
-            listen_addr,
-            backends,
-            ..Default::default()
-        };
-        Self::new(config)
-    }
-
     /// Start the load balancer.
     ///
     /// This will:
@@ -271,119 +226,6 @@ impl LoadBalancer {
 
         proxy.serve(addr).await
     }
-
-    /// Get the number of healthy backends.
-    #[allow(dead_code)]
-    pub async fn healthy_count(&self) -> usize {
-        let backends = self.backends.read().await;
-        backends.iter().filter(|b| b.is_healthy()).count()
-    }
-
-    /// Get the total number of backends.
-    #[allow(dead_code)]
-    pub async fn total_count(&self) -> usize {
-        self.backends.read().await.len()
-    }
-
-    /// Get the shared backends reference for use with `ReloadManager`.
-    ///
-    /// This allows creating a `ReloadManager` that can dynamically update
-    /// the backend list without restarting the load balancer.
-    #[allow(dead_code)]
-    pub fn backends(&self) -> Arc<RwLock<Vec<Backend>>> {
-        self.backends.clone()
-    }
-
-    /// Get the shared selection reference for use with `ReloadManager`.
-    #[allow(dead_code)]
-    pub fn selection(&self) -> Arc<RwLock<RoundRobin>> {
-        self.selection.clone()
-    }
-
-    /// Create a `ReloadManager` for this load balancer.
-    ///
-    /// The `ReloadManager` allows dynamically updating the backend list
-    /// with graceful draining of removed backends.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use mik::runtime::lb::{LoadBalancer, ReloadConfig};
-    /// use std::time::Duration;
-    ///
-    /// let lb = LoadBalancer::from_backends(
-    ///     "0.0.0.0:3000".parse().unwrap(),
-    ///     vec!["127.0.0.1:3001".to_string()],
-    /// );
-    ///
-    /// let reload_config = ReloadConfig {
-    ///     drain_timeout: Duration::from_secs(30),
-    /// };
-    ///
-    /// let manager = lb.reload_manager(reload_config);
-    ///
-    /// // Add a new backend dynamically
-    /// manager.add_backend("127.0.0.1:3002".to_string()).await;
-    ///
-    /// // Remove a backend with graceful draining
-    /// manager.remove_backend("127.0.0.1:3001").await;
-    /// ```
-    #[allow(dead_code)]
-    pub fn reload_manager(&self, config: ReloadConfig) -> ReloadManager {
-        ReloadManager::new(config, self.backends.clone(), self.selection.clone())
-    }
-
-    /// Update the backend list atomically.
-    ///
-    /// This is a simpler alternative to using `ReloadManager` when you
-    /// don't need graceful draining. New backends are added immediately
-    /// and removed backends are removed immediately.
-    ///
-    /// For graceful draining, use `reload_manager()` instead.
-    #[allow(dead_code)]
-    pub async fn update_backends(&self, new_backends: Vec<String>) {
-        let backends: Vec<Backend> = new_backends
-            .iter()
-            .map(|addr| Backend::new(addr.clone()))
-            .collect();
-
-        let mut backends_write = self.backends.write().await;
-        let mut selection_write = self.selection.write().await;
-
-        *selection_write = RoundRobin::new(backends.len());
-        *backends_write = backends;
-
-        info!(count = backends_write.len(), "Backend list updated");
-    }
-
-    /// Drain a specific backend by marking it unhealthy.
-    ///
-    /// The backend will stop receiving new requests but will continue
-    /// to serve existing connections until they complete.
-    ///
-    /// Returns true if the backend was found and marked for draining.
-    #[allow(dead_code)]
-    pub async fn drain_backend(&self, address: &str) -> bool {
-        let backends = self.backends.read().await;
-        for backend in backends.iter() {
-            if backend.address() == address {
-                backend.mark_unhealthy();
-                info!(address = %address, "Backend marked for draining");
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Get the number of active requests on a specific backend.
-    #[allow(dead_code)]
-    pub async fn backend_active_requests(&self, address: &str) -> Option<u64> {
-        let backends = self.backends.read().await;
-        backends
-            .iter()
-            .find(|b| b.address() == address)
-            .map(backend::Backend::active_requests)
-    }
 }
 
 #[cfg(test)]
@@ -399,21 +241,9 @@ mod tests {
     }
 
     #[test]
-    fn test_load_balancer_from_backends() {
-        let lb = LoadBalancer::from_backends(
-            "127.0.0.1:8080".parse().unwrap(),
-            vec!["127.0.0.1:3001".to_string(), "127.0.0.1:3002".to_string()],
-        )
-        .unwrap();
-        assert_eq!(lb.config.listen_addr, "127.0.0.1:8080".parse().unwrap());
-        assert_eq!(lb.config.backends.len(), 2);
-    }
-
-    #[test]
     fn test_load_balancer_config_from_manifest() {
         let lb_config = LbConfig {
             enabled: true,
-            algorithm: "weighted".to_string(),
             health_check_type: "http".to_string(),
             health_check_interval_ms: 10000,
             health_check_timeout_ms: 3000,
@@ -478,19 +308,8 @@ mod tests {
     #[test]
     fn test_load_balancer_config_from_manifest_tcp_health_check() {
         let lb_config = LbConfig {
-            enabled: true,
-            algorithm: "round_robin".to_string(),
             health_check_type: "tcp".to_string(),
-            health_check_interval_ms: 5000,
-            health_check_timeout_ms: 2000,
-            health_check_path: "/health".to_string(), // Should be ignored for TCP
-            unhealthy_threshold: 3,
-            healthy_threshold: 2,
-            request_timeout_secs: 30,
-            max_connections_per_backend: 100,
-            pool_idle_timeout_secs: 90,
-            tcp_keepalive_secs: 60,
-            http2_only: false,
+            ..LbConfig::default()
         };
 
         let config = LoadBalancerConfig::from_manifest(

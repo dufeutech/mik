@@ -84,16 +84,6 @@ impl Backend {
         Self::with_options(address, 1, DEFAULT_MAX_CONNECTIONS)
     }
 
-    /// Create a new backend with the given address and weight.
-    ///
-    /// Weight determines the proportion of traffic this backend receives.
-    /// A backend with weight 2 will receive twice as much traffic as one with weight 1.
-    /// Weight of 0 is treated as 1 (minimum weight).
-    #[allow(dead_code)]
-    pub fn with_weight(address: String, weight: u32) -> Self {
-        Self::with_options(address, weight, DEFAULT_MAX_CONNECTIONS)
-    }
-
     /// Create a new backend with the given address, weight, and max connections.
     ///
     /// Weight determines the proportion of traffic this backend receives.
@@ -166,12 +156,6 @@ impl Backend {
     /// Get the backend address.
     pub fn address(&self) -> &str {
         &self.address
-    }
-
-    /// Get the backend weight for load balancing.
-    #[allow(dead_code)]
-    pub const fn weight(&self) -> u32 {
-        self.weight
     }
 
     /// Get the maximum connections limit for this backend.
@@ -406,21 +390,6 @@ mod tests {
     }
 
     #[test]
-    fn test_backend_weight() {
-        // Default weight is 1
-        let backend = Backend::new("127.0.0.1:3001".to_string());
-        assert_eq!(backend.weight(), 1);
-
-        // Custom weight
-        let backend = Backend::with_weight("127.0.0.1:3001".to_string(), 5);
-        assert_eq!(backend.weight(), 5);
-
-        // Weight of 0 should be treated as 1
-        let backend = Backend::with_weight("127.0.0.1:3001".to_string(), 0);
-        assert_eq!(backend.weight(), 1);
-    }
-
-    #[test]
     fn test_backend_max_connections() {
         // Default max connections
         let backend = Backend::new("127.0.0.1:3001".to_string());
@@ -450,7 +419,6 @@ mod tests {
 
         let cloned = backend.clone();
         assert_eq!(cloned.address(), backend.address());
-        assert_eq!(cloned.weight(), backend.weight());
         assert_eq!(cloned.max_connections(), backend.max_connections());
         assert_eq!(cloned.is_healthy(), backend.is_healthy());
         assert_eq!(cloned.active_requests(), backend.active_requests());
@@ -585,16 +553,14 @@ mod tests {
 
         // With circuit breaker
         let config = CircuitBreakerConfig::new(5, 2, Duration::from_secs(60));
-        let backend = Backend::with_all_options("127.0.0.1:3001".to_string(), 2, 50, Some(config));
+        let backend = Backend::with_all_options("127.0.0.1:3001".to_string(), 1, 50, Some(config));
 
-        assert_eq!(backend.weight(), 2);
         assert_eq!(backend.max_connections(), 50);
         assert!(backend.circuit_breaker().is_some());
 
         // Without circuit breaker
-        let backend = Backend::with_all_options("127.0.0.1:3001".to_string(), 3, 100, None);
+        let backend = Backend::with_all_options("127.0.0.1:3001".to_string(), 1, 100, None);
 
-        assert_eq!(backend.weight(), 3);
         assert_eq!(backend.max_connections(), 100);
         assert!(backend.circuit_breaker().is_none());
     }

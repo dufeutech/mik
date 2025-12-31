@@ -30,13 +30,10 @@
 //! use the async methods (`query_async`, `execute_async`, etc.) which automatically
 //! wrap operations in `spawn_blocking` to avoid blocking the async runtime.
 
-// Allow unused - SQL service for future sidecar integration
-#![allow(dead_code)]
-
 use anyhow::{Context, Result};
 use rusqlite::{Connection, params_from_iter, types::ValueRef};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 /// SQL value types that can be stored in `SQLite`.
@@ -100,36 +97,8 @@ impl Row {
         Self { columns, values }
     }
 
-    /// Creates a new row, returning an error if column/value counts don't match.
-    ///
-    /// This is the fallible alternative to `new()` for cases where panicking
-    /// is not acceptable.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if `columns.len()` does not equal `values.len()`.
-    pub fn try_new(columns: Vec<String>, values: Vec<Value>) -> Result<Self> {
-        if columns.len() != values.len() {
-            anyhow::bail!(
-                "Column count ({}) does not match value count ({})",
-                columns.len(),
-                values.len()
-            );
-        }
-        Ok(Self { columns, values })
-    }
-
-    /// Gets the number of columns in this row.
-    pub const fn len(&self) -> usize {
-        self.columns.len()
-    }
-
-    /// Returns true if the row has no columns.
-    pub const fn is_empty(&self) -> bool {
-        self.columns.is_empty()
-    }
-
     /// Gets a value by column name, returning None if not found.
+    #[allow(dead_code)] // Used in tests and part of public API
     pub fn get(&self, column: &str) -> Option<&Value> {
         self.columns
             .iter()
@@ -150,7 +119,6 @@ impl Row {
 #[derive(Clone)]
 pub struct SqlService {
     conn: Arc<Mutex<Connection>>,
-    path: PathBuf,
 }
 
 impl SqlService {
@@ -192,13 +160,7 @@ impl SqlService {
 
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
-            path: path.to_path_buf(),
         })
-    }
-
-    /// Returns the path to the database file.
-    pub fn path(&self) -> &Path {
-        &self.path
     }
 
     /// Executes a SELECT query and returns matching rows.
@@ -340,6 +302,7 @@ impl SqlService {
     ///     CREATE INDEX idx_users_name ON users(name);
     /// "#)?;
     /// ```
+    #[allow(dead_code)] // Used in tests and part of public API
     pub fn execute_batch(&self, sql: &str) -> Result<()> {
         let conn = self
             .conn
@@ -425,14 +388,33 @@ impl SqlService {
             .context("Task join error")?
     }
 
-    /// Executes a batch of SQL statements asynchronously.
+    /// Executes multiple statements atomically in a transaction.
     ///
-    /// Async version of `execute_batch` that uses `spawn_blocking`.
-    pub async fn execute_batch_async(&self, sql: String) -> Result<()> {
+    /// All statements succeed or all are rolled back. Returns the number of
+    /// rows affected by each statement in order.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any statement fails. On error, all changes are rolled back.
+    pub async fn execute_batch_atomic_async(
+        &self,
+        statements: Vec<(String, Vec<Value>)>,
+    ) -> Result<Vec<usize>> {
         let service = self.clone();
-        tokio::task::spawn_blocking(move || service.execute_batch(&sql))
-            .await
-            .context("Task join error")?
+        tokio::task::spawn_blocking(move || {
+            let tx = service.transaction()?;
+            let mut results = Vec::with_capacity(statements.len());
+
+            for (sql, params) in &statements {
+                let affected = tx.execute(sql, params)?;
+                results.push(affected);
+            }
+
+            tx.commit()?;
+            Ok(results)
+        })
+        .await
+        .context("Task join error")?
     }
 }
 
@@ -471,50 +453,6 @@ impl Transaction<'_> {
             .with_context(|| format!("Failed to execute statement: {sql}"))?;
 
         Ok(affected)
-    }
-
-    /// Executes a query within the transaction.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if query preparation or execution fails.
-    pub fn query(&self, sql: &str, params: &[Value]) -> Result<Vec<Row>> {
-        let mut stmt = self
-            .guard
-            .prepare(sql)
-            .with_context(|| format!("Failed to prepare query: {sql}"))?;
-
-        // Convert Value params to rusqlite::types::Value
-        let rusqlite_params: Vec<rusqlite::types::Value> = params
-            .iter()
-            .map(|v| match v {
-                Value::Null => rusqlite::types::Value::Null,
-                Value::Integer(i) => rusqlite::types::Value::Integer(*i),
-                Value::Real(r) => rusqlite::types::Value::Real(*r),
-                Value::Text(s) => rusqlite::types::Value::Text(s.clone()),
-                Value::Blob(b) => rusqlite::types::Value::Blob(b.clone()),
-            })
-            .collect();
-
-        let column_count = stmt.column_count();
-        let column_names: Vec<String> = (0..column_count)
-            .map(|i| stmt.column_name(i).unwrap_or("unknown").to_string())
-            .collect();
-
-        let rows = stmt
-            .query_map(params_from_iter(rusqlite_params.iter()), |row| {
-                let mut values = Vec::with_capacity(column_count);
-                for i in 0..column_count {
-                    let value_ref = row.get_ref(i)?;
-                    values.push(Value::from(value_ref));
-                }
-                Ok(Row::new(column_names.clone(), values))
-            })
-            .with_context(|| format!("Failed to execute query: {sql}"))?
-            .collect::<Result<Vec<_>, _>>()
-            .context("Failed to fetch query results")?;
-
-        Ok(rows)
     }
 
     /// Commits the transaction, making all changes permanent.
@@ -852,5 +790,78 @@ mod tests {
 
         assert_eq!(row.columns, deserialized.columns);
         assert_eq!(row.values, deserialized.values);
+    }
+
+    #[tokio::test]
+    async fn test_batch_atomic_rollback_on_failure() {
+        let tmp = TempDir::new().unwrap();
+        let db_path = tmp.path().join("atomic.db");
+        let service = SqlService::open(&db_path).unwrap();
+
+        // Create table
+        service
+            .execute_batch("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
+            .unwrap();
+
+        // Try to insert with a failure in the middle (NULL for NOT NULL column)
+        let statements = vec![
+            (
+                "INSERT INTO users (name) VALUES (?)".to_string(),
+                vec![Value::Text("Alice".to_string())],
+            ),
+            (
+                "INSERT INTO users (name) VALUES (?)".to_string(),
+                vec![Value::Null], // This should fail due to NOT NULL constraint
+            ),
+            (
+                "INSERT INTO users (name) VALUES (?)".to_string(),
+                vec![Value::Text("Charlie".to_string())],
+            ),
+        ];
+
+        let result = service.execute_batch_atomic_async(statements).await;
+        assert!(result.is_err(), "Batch should fail on constraint violation");
+
+        // Verify no rows were inserted (rollback happened)
+        let rows = service.query("SELECT * FROM users", &[]).unwrap();
+        assert_eq!(rows.len(), 0, "All inserts should be rolled back");
+    }
+
+    #[tokio::test]
+    async fn test_batch_atomic_success() {
+        let tmp = TempDir::new().unwrap();
+        let db_path = tmp.path().join("atomic_success.db");
+        let service = SqlService::open(&db_path).unwrap();
+
+        // Create table
+        service
+            .execute_batch("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
+            .unwrap();
+
+        // Insert multiple rows atomically
+        let statements = vec![
+            (
+                "INSERT INTO users (name) VALUES (?)".to_string(),
+                vec![Value::Text("Alice".to_string())],
+            ),
+            (
+                "INSERT INTO users (name) VALUES (?)".to_string(),
+                vec![Value::Text("Bob".to_string())],
+            ),
+        ];
+
+        let results = service
+            .execute_batch_atomic_async(statements)
+            .await
+            .unwrap();
+        assert_eq!(results, vec![1, 1]);
+
+        // Verify all rows were inserted
+        let rows = service
+            .query("SELECT * FROM users ORDER BY name", &[])
+            .unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].values[1], Value::Text("Alice".to_string()));
+        assert_eq!(rows[1].values[1], Value::Text("Bob".to_string()));
     }
 }

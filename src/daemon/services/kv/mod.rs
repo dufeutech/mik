@@ -16,9 +16,6 @@
 //! use the async methods (`get_async`, `set_async`, etc.) which automatically
 //! wrap operations in `spawn_blocking` to avoid blocking the async runtime.
 
-// Allow unused - KV service for future sidecar integration
-#![allow(dead_code)]
-
 mod async_ops;
 mod store;
 mod types;

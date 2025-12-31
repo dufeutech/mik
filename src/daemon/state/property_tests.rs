@@ -3,7 +3,6 @@
 //! These tests verify data integrity invariants for the state store:
 //! - Instance state round-trip (save then load returns same data)
 //! - Cron job persistence (save then load returns same config)
-//! - Service registry consistency (register/unregister maintains consistency)
 //! - Concurrent access safety (multiple readers/writers don't corrupt data)
 
 use proptest::prelude::*;
@@ -15,7 +14,7 @@ use tempfile::TempDir;
 
 use chrono::{DateTime, TimeZone, Utc};
 
-use super::{Instance, ServiceType, Sidecar, StateStore, Status};
+use super::{Instance, StateStore, Status};
 use crate::daemon::cron::{JobExecution, ScheduleConfig};
 
 // ============================================================================
@@ -110,53 +109,6 @@ fn instance_strategy() -> impl Strategy<Value = Instance> {
                     auto_restart,
                     restart_count,
                     last_restart_at,
-                }
-            },
-        )
-}
-
-/// Strategy for generating ServiceType variants
-fn service_type_strategy() -> impl Strategy<Value = ServiceType> {
-    prop_oneof![
-        Just(ServiceType::Kv),
-        Just(ServiceType::Sql),
-        Just(ServiceType::Storage),
-        Just(ServiceType::Queue),
-        "[a-z]{1,10}".prop_map(ServiceType::Custom),
-    ]
-}
-
-/// Strategy for generating valid URLs
-fn url_strategy() -> impl Strategy<Value = String> {
-    (1024u16..65535u16).prop_map(|port| format!("http://localhost:{port}"))
-}
-
-/// Strategy for generating optional descriptions
-fn optional_description_strategy() -> impl Strategy<Value = Option<String>> {
-    prop::option::of("[a-zA-Z0-9 ]{0,50}")
-}
-
-/// Strategy for generating complete Sidecar objects
-fn sidecar_strategy() -> impl Strategy<Value = Sidecar> {
-    (
-        instance_name_strategy(),
-        service_type_strategy(),
-        url_strategy(),
-        optional_description_strategy(),
-        datetime_strategy(),
-        datetime_strategy(),
-        any::<bool>(),
-    )
-        .prop_map(
-            |(name, service_type, url, description, registered_at, last_heartbeat, healthy)| {
-                Sidecar {
-                    name,
-                    service_type,
-                    url,
-                    description,
-                    registered_at,
-                    last_heartbeat,
-                    healthy,
                 }
             },
         )
@@ -528,162 +480,6 @@ proptest! {
 }
 
 // ============================================================================
-// Service Registry Tests
-// ============================================================================
-
-proptest! {
-    /// Invariant: Saving a sidecar then loading it returns identical data.
-    #[test]
-    fn sidecar_roundtrip_preserves_data(sidecar in sidecar_strategy()) {
-        let tmp = TempDir::new().unwrap();
-        let db_path = tmp.path().join("test.redb");
-        let store = StateStore::open(&db_path).unwrap();
-
-        // Save the sidecar
-        store.save_sidecar(&sidecar).unwrap();
-
-        // Load the sidecar back
-        let loaded = store.get_sidecar(&sidecar.name).unwrap().unwrap();
-
-        // Verify all fields match
-        prop_assert_eq!(loaded.name, sidecar.name);
-        prop_assert_eq!(loaded.service_type, sidecar.service_type);
-        prop_assert_eq!(loaded.url, sidecar.url);
-        prop_assert_eq!(loaded.description, sidecar.description);
-        prop_assert_eq!(loaded.registered_at, sidecar.registered_at);
-        prop_assert_eq!(loaded.last_heartbeat, sidecar.last_heartbeat);
-        prop_assert_eq!(loaded.healthy, sidecar.healthy);
-    }
-
-    /// Invariant: Register/unregister maintains consistency.
-    #[test]
-    fn sidecar_register_unregister_consistency(
-        sidecars in prop::collection::vec(sidecar_strategy(), 1..10)
-    ) {
-        let tmp = TempDir::new().unwrap();
-        let db_path = tmp.path().join("test.redb");
-        let store = StateStore::open(&db_path).unwrap();
-
-        // Make names unique
-        let sidecars: Vec<Sidecar> = sidecars
-            .into_iter()
-            .enumerate()
-            .map(|(i, mut s)| {
-                s.name = format!("{}-{}", s.name, i);
-                s
-            })
-            .collect();
-
-        // Register all sidecars
-        for sidecar in &sidecars {
-            store.save_sidecar(sidecar).unwrap();
-        }
-
-        // Verify all are registered
-        let listed = store.list_sidecars().unwrap();
-        prop_assert_eq!(listed.len(), sidecars.len());
-
-        // Unregister half
-        let to_remove = sidecars.len() / 2;
-        for sidecar in sidecars.iter().take(to_remove) {
-            let removed = store.remove_sidecar(&sidecar.name).unwrap();
-            prop_assert!(removed);
-        }
-
-        // Verify remaining count
-        let remaining = store.list_sidecars().unwrap();
-        prop_assert_eq!(remaining.len(), sidecars.len() - to_remove);
-
-        // Verify removed ones are gone
-        for sidecar in sidecars.iter().take(to_remove) {
-            prop_assert!(store.get_sidecar(&sidecar.name).unwrap().is_none());
-        }
-
-        // Verify remaining ones still exist
-        for sidecar in sidecars.iter().skip(to_remove) {
-            prop_assert!(store.get_sidecar(&sidecar.name).unwrap().is_some());
-        }
-    }
-
-    /// Invariant: List by type returns correct sidecars.
-    #[test]
-    fn sidecar_list_by_type_is_accurate(
-        service_type in service_type_strategy()
-    ) {
-        let tmp = TempDir::new().unwrap();
-        let db_path = tmp.path().join("test.redb");
-        let store = StateStore::open(&db_path).unwrap();
-
-        // Create sidecars with mixed types
-        let now = Utc::now();
-        let kv_sidecar = Sidecar {
-            name: "kv-service".to_string(),
-            service_type: ServiceType::Kv,
-            url: "http://localhost:9001".to_string(),
-            description: None,
-            registered_at: now,
-            last_heartbeat: now,
-            healthy: true,
-        };
-        let sql_sidecar = Sidecar {
-            name: "sql-service".to_string(),
-            service_type: ServiceType::Sql,
-            url: "http://localhost:9002".to_string(),
-            description: None,
-            registered_at: now,
-            last_heartbeat: now,
-            healthy: true,
-        };
-        let custom_sidecar = Sidecar {
-            name: "custom-service".to_string(),
-            service_type: service_type.clone(),
-            url: "http://localhost:9003".to_string(),
-            description: None,
-            registered_at: now,
-            last_heartbeat: now,
-            healthy: true,
-        };
-
-        store.save_sidecar(&kv_sidecar).unwrap();
-        store.save_sidecar(&sql_sidecar).unwrap();
-        store.save_sidecar(&custom_sidecar).unwrap();
-
-        // List by the generated service type
-        let by_type = store.list_sidecars_by_type(&service_type).unwrap();
-
-        // All returned sidecars should have the correct type
-        for sidecar in &by_type {
-            prop_assert_eq!(&sidecar.service_type, &service_type);
-        }
-
-        // The custom sidecar should always be in the list
-        prop_assert!(by_type.iter().any(|s| s.name == "custom-service"));
-    }
-
-    /// Invariant: Heartbeat update changes timestamp and health status.
-    #[test]
-    fn sidecar_heartbeat_update_works(
-        sidecar in sidecar_strategy(),
-        new_healthy in any::<bool>()
-    ) {
-        let tmp = TempDir::new().unwrap();
-        let db_path = tmp.path().join("test.redb");
-        let store = StateStore::open(&db_path).unwrap();
-
-        // Register the sidecar
-        store.save_sidecar(&sidecar).unwrap();
-
-        // Update heartbeat
-        let updated = store.update_sidecar_heartbeat(&sidecar.name, new_healthy).unwrap();
-        prop_assert!(updated);
-
-        // Verify health status changed
-        let loaded = store.get_sidecar(&sidecar.name).unwrap().unwrap();
-        prop_assert_eq!(loaded.healthy, new_healthy);
-    }
-}
-
-// ============================================================================
 // Concurrent Access Tests
 // ============================================================================
 
@@ -817,56 +613,6 @@ proptest! {
         let loaded = store.get_instance(&instance.name).unwrap();
         prop_assert!(loaded.is_some());
     }
-
-    /// Invariant: Concurrent register/unregister of sidecars maintains consistency.
-    #[test]
-    fn concurrent_sidecar_operations_safe(base_name in instance_name_strategy()) {
-        let tmp = TempDir::new().unwrap();
-        let db_path = tmp.path().join("test.redb");
-        let store = Arc::new(StateStore::open(&db_path).unwrap());
-        let now = Utc::now();
-
-        // Spawn threads that register and unregister sidecars
-        let handles: Vec<_> = (0..4)
-            .map(|thread_id| {
-                let store = Arc::clone(&store);
-                let name_prefix = base_name.clone();
-                thread::spawn(move || {
-                    for i in 0..10 {
-                        let sidecar = Sidecar {
-                            name: format!("{name_prefix}-{thread_id}-{i}"),
-                            service_type: ServiceType::Kv,
-                            url: format!("http://localhost:{}", 9000 + thread_id * 10 + i),
-                            description: None,
-                            registered_at: now,
-                            last_heartbeat: now,
-                            healthy: true,
-                        };
-                        store.save_sidecar(&sidecar).unwrap();
-
-                        // Every other one, also test removal
-                        if i % 2 == 0 {
-                            let _ = store.remove_sidecar(&sidecar.name);
-                        }
-                    }
-                })
-            })
-            .collect();
-
-        // Wait for all threads
-        for handle in handles {
-            handle.join().unwrap();
-        }
-
-        // Verify list_sidecars works and returns valid data
-        let sidecars = store.list_sidecars().unwrap();
-
-        // All returned sidecars should have valid names
-        for sidecar in &sidecars {
-            prop_assert!(!sidecar.name.is_empty());
-            prop_assert!(!sidecar.url.is_empty());
-        }
-    }
 }
 
 // ============================================================================
@@ -883,7 +629,6 @@ proptest! {
 
         prop_assert!(store.list_instances().unwrap().is_empty());
         prop_assert!(store.list_cron_jobs().unwrap().is_empty());
-        prop_assert!(store.list_sidecars().unwrap().is_empty());
     }
 
     /// Invariant: Getting non-existent items returns None.
@@ -895,7 +640,6 @@ proptest! {
 
         prop_assert!(store.get_instance(&name).unwrap().is_none());
         prop_assert!(store.get_cron_job(&name).unwrap().is_none());
-        prop_assert!(store.get_sidecar(&name).unwrap().is_none());
     }
 
     /// Invariant: Removing non-existent items returns false.
@@ -907,7 +651,6 @@ proptest! {
 
         prop_assert!(!store.remove_instance(&name).unwrap());
         prop_assert!(!store.remove_cron_job(&name).unwrap());
-        prop_assert!(!store.remove_sidecar(&name).unwrap());
     }
 
     /// Invariant: Overwriting an item updates it completely.

@@ -3,7 +3,6 @@
 pub mod cron;
 pub mod instances;
 pub mod kv;
-pub mod services;
 pub mod sql;
 pub mod storage;
 
@@ -16,8 +15,5 @@ pub(crate) use instances::{
     stop_instance, version,
 };
 pub(crate) use kv::{kv_delete, kv_get, kv_list, kv_set};
-pub(crate) use services::{
-    services_delete, services_get, services_heartbeat, services_list, services_register,
-};
 pub(crate) use sql::{sql_batch, sql_execute, sql_query};
 pub(crate) use storage::{storage_delete, storage_get, storage_head, storage_list, storage_put};

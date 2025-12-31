@@ -16,6 +16,7 @@ use super::super::types::{
 };
 use super::super::{AppError, SharedState};
 use crate::daemon::cron::parse_schedules_from_manifest;
+use crate::daemon::metrics;
 use crate::daemon::process::{self, SpawnConfig};
 use crate::daemon::state::{Instance, Status};
 
@@ -31,16 +32,44 @@ pub(crate) async fn list_instances(
 
     let instances = store.list_instances_async().await?;
 
+    // Track counts for metrics
+    let mut running_count = 0u64;
+    let mut stopped_count = 0u64;
+    let mut crashed_count = 0u64;
+
     let mut responses = Vec::with_capacity(instances.len());
     for instance in &instances {
         // Check actual running status
         let mut response = InstanceResponse::from(instance);
-        if instance.status == Status::Running && !process::is_running(instance.pid)? {
+        let is_actually_running =
+            instance.status == Status::Running && process::is_running(instance.pid)?;
+
+        if instance.status == Status::Running && !is_actually_running {
             response.status = "crashed".to_string();
             response.uptime = None;
+            crashed_count += 1;
+        } else {
+            match &instance.status {
+                Status::Running => {
+                    running_count += 1;
+                    // Record uptime for running instances
+                    #[allow(clippy::cast_precision_loss)] // Uptime in seconds is safe
+                    let uptime = chrono::Utc::now()
+                        .signed_duration_since(instance.started_at)
+                        .num_seconds() as f64;
+                    metrics::set_instance_uptime(&instance.name, uptime);
+                },
+                Status::Stopped => stopped_count += 1,
+                Status::Crashed { .. } => crashed_count += 1,
+            }
         }
         responses.push(response);
     }
+
+    // Update instance count metrics
+    metrics::set_instance_count("running", running_count);
+    metrics::set_instance_count("stopped", stopped_count);
+    metrics::set_instance_count("crashed", crashed_count);
 
     Ok(Json(ListInstancesResponse {
         instances: responses,

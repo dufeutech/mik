@@ -133,7 +133,8 @@ impl CronScheduler {
         jobs.get(name).map(JobState::to_job_info)
     }
 
-    /// Gets execution history for a job.
+    /// Gets execution history for a job (in-memory, faster than database).
+    #[allow(dead_code)] // HTTP handler uses database history for persistence; kept for future optimization
     pub async fn get_history(&self, name: &str, limit: Option<usize>) -> Option<Vec<JobExecution>> {
         let jobs = self.jobs.read().await;
 

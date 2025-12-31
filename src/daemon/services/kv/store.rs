@@ -28,23 +28,6 @@ pub struct KvStore {
 }
 
 impl KvStore {
-    /// Opens the default KV store at `~/.mik/kv.redb`.
-    ///
-    /// This is a convenience method for the standard location.
-    /// Creates the directory and database if they don't exist.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The data directory cannot be determined or created
-    /// - The database file cannot be opened or created
-    /// - The KV table cannot be initialized
-    pub fn open_default() -> Result<Self> {
-        let data_dir = crate::daemon::services::get_data_dir()?;
-        let kv_path = data_dir.join("kv.redb");
-        Self::open(kv_path)
-    }
-
     /// Opens or creates the KV database at the given path.
     ///
     /// Creates parent directories if needed. Uses redb's ACID guarantees
@@ -226,6 +209,7 @@ impl KvStore {
     /// # Errors
     ///
     /// Returns an error if the underlying `get` operation fails.
+    #[allow(dead_code)] // Standard KV API, kept for future use
     pub fn exists(&self, key: &str) -> Result<bool> {
         Ok(self.get(key)?.is_some())
     }

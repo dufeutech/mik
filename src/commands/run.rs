@@ -203,6 +203,13 @@ async fn run_with_lb(
     port_override: Option<u16>,
     local_only: bool,
 ) -> Result<()> {
+    // Load manifest for lb config and port
+    let manifest = Manifest::load().ok();
+    let lb_manifest_config = manifest
+        .as_ref()
+        .and_then(|m| m.lb.clone())
+        .unwrap_or_default();
+
     // Get base port from override, mik.toml, or default
     let base_port = port_override
         .or_else(Manifest::load_port)
@@ -261,18 +268,21 @@ async fn run_with_lb(
     println!("\n─────────────────────────────────────");
     println!("L7 Load Balancer: http://{lb_addr}");
     println!("─────────────────────────────────────");
-    println!("  Algorithm: round-robin");
-    println!("  Health check: /health (5s interval)");
+    println!(
+        "  Health check: {} ({}ms interval)",
+        if lb_manifest_config.health_check_type == "http" {
+            &lb_manifest_config.health_check_path
+        } else {
+            "tcp"
+        },
+        lb_manifest_config.health_check_interval_ms
+    );
     println!("  Backends: {}", backend_addrs.join(", "));
     println!("─────────────────────────────────────\n");
     println!("Press Ctrl+C to stop\n");
 
-    // Create load balancer config
-    let lb_config = LoadBalancerConfig {
-        listen_addr: lb_addr,
-        backends: backend_addrs,
-        ..Default::default()
-    };
+    // Create load balancer config from mik.toml [lb] section
+    let lb_config = LoadBalancerConfig::from_manifest(&lb_manifest_config, lb_addr, backend_addrs);
 
     let lb = LoadBalancer::new(lb_config)?;
 

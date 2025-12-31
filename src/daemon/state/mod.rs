@@ -12,19 +12,17 @@
 //!
 //! # Module Structure
 //!
-//! - `types` - Core data structures (`Instance`, `Status`, `Sidecar`, `ServiceType`)
+//! - `types` - Core data structures (`Instance`, `Status`)
 //! - `instances` - Instance CRUD operations
 //! - `cron` - Cron job configuration storage
 //! - `history` - Job execution history storage
-//! - `sidecars` - Sidecar service registry operations
 
 mod cron;
 mod history;
 mod instances;
-mod sidecars;
 mod types;
 
-pub use types::{Instance, ServiceType, Sidecar, Status};
+pub use types::{Instance, Status};
 
 use anyhow::{Context, Result};
 use redb::{Database, TableDefinition};
@@ -43,10 +41,6 @@ pub(crate) const CRON_JOBS_TABLE: TableDefinition<'static, &'static str, &'stati
 /// Key format: `job_name:execution_id`
 pub(crate) const CRON_HISTORY_TABLE: TableDefinition<'static, &'static str, &'static [u8]> =
     TableDefinition::new("cron_history");
-
-/// Table name for sidecar service registry
-pub(crate) const SIDECARS_TABLE: TableDefinition<'static, &'static str, &'static [u8]> =
-    TableDefinition::new("sidecars");
 
 /// State storage interface wrapping redb database.
 ///
@@ -95,9 +89,6 @@ impl StateStore {
             let _history_table = write_txn
                 .open_table(CRON_HISTORY_TABLE)
                 .context("Failed to initialize cron_history table")?;
-            let _sidecars_table = write_txn
-                .open_table(SIDECARS_TABLE)
-                .context("Failed to initialize sidecars table")?;
         }
         write_txn
             .commit()

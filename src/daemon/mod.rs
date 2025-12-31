@@ -4,9 +4,7 @@
 //! for Docker-like instance lifecycle management.
 
 pub mod cron;
-pub mod error;
 pub mod http;
-pub mod logging;
 pub mod metrics;
 #[cfg(feature = "otlp")]
 pub mod otlp;
