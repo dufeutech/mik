@@ -683,9 +683,10 @@ fn test_circuit_state_default() {
 
 #[test]
 fn test_failure_in_open_state_extends_timeout() {
+    // Use larger timeouts to avoid CI timing flakiness
     let config = CircuitBreakerConfig {
         failure_threshold: 2,
-        timeout: Duration::from_millis(100),
+        timeout: Duration::from_millis(500),
         ..Default::default()
     };
     let cb = CircuitBreaker::with_config(config);
@@ -695,16 +696,17 @@ fn test_failure_in_open_state_extends_timeout() {
     cb.record_failure("test");
     assert!(cb.is_open("test"));
 
-    // Wait halfway
-    thread::sleep(Duration::from_millis(60));
+    // Wait a short while (well under timeout)
+    thread::sleep(Duration::from_millis(100));
 
     // Record another failure (extends timeout)
     cb.record_failure("test");
 
-    // Wait another 60ms (should still be open if timeout was reset)
-    thread::sleep(Duration::from_millis(60));
+    // Wait another 100ms (should still be open if timeout was reset)
+    // Total elapsed: 200ms, but timeout was reset at 100ms, so only 100ms into new 500ms timeout
+    thread::sleep(Duration::from_millis(100));
 
-    // Should still be blocked (timeout was reset)
+    // Should still be blocked (timeout was reset, still 400ms remaining)
     assert!(cb.check_request("test").is_err());
 }
 

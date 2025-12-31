@@ -258,9 +258,11 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(windows)]
     #[test]
     fn test_path_traversal_backslash_variants() {
         // Windows-style path traversal with backslashes
+        // Note: On Unix, backslashes are literal filename characters, not path separators
         assert_eq!(
             sanitize_file_path("..\\etc\\passwd"),
             Err(PathTraversalError::EscapesBaseDirectory)
@@ -275,9 +277,11 @@ mod tests {
         );
     }
 
+    #[cfg(windows)]
     #[test]
     fn test_path_traversal_mixed_separators() {
         // Mix of forward and back slashes
+        // Note: On Unix, backslashes are literal filename characters, not path separators
         assert_eq!(
             sanitize_file_path("..\\../etc/passwd"),
             Err(PathTraversalError::EscapesBaseDirectory)
