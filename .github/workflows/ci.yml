@@ -20,6 +20,8 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   RUSTFLAGS: -Dwarnings
+  # Limit parallelism to prevent OOM on CI runners
+  CARGO_BUILD_JOBS: 2
 
 jobs:
   # ============================================================================

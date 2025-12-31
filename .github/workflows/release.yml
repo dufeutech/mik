@@ -8,6 +8,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  # Limit parallelism to prevent OOM on CI runners
+  CARGO_BUILD_JOBS: 2
 
 permissions:
   contents: write
