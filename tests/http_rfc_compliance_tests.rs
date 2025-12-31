@@ -335,6 +335,7 @@ async fn test_custom_methods_allowed() {
 ///
 /// Based on Wasmtime bug #11778.
 #[tokio::test]
+#[ignore] // Mock server doesn't support raw TCP edge cases; hangs on Linux/macOS
 async fn test_invalid_scheme_rejected() {
     let host = TestHost::builder()
         .start()
@@ -504,6 +505,7 @@ async fn test_non_ascii_path() {
 ///
 /// Based on Wasmtime bug #11780.
 #[tokio::test]
+#[ignore] // Mock server doesn't support raw TCP edge cases; hangs on Linux/macOS
 async fn test_options_asterisk() {
     let host = TestHost::builder()
         .start()
@@ -604,6 +606,7 @@ async fn test_options_empty_path() {
 ///
 /// Based on Wasmtime bug #11571.
 #[tokio::test]
+#[ignore] // Mock server doesn't support raw TCP edge cases; hangs on Linux/macOS
 async fn test_absolute_form_request() {
     let host = TestHost::builder()
         .start()
