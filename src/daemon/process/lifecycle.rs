@@ -187,11 +187,13 @@ pub fn kill_instance(pid: u32) -> Result<()> {
         use nix::sys::signal::{self, Signal};
         use nix::unistd::Pid as NixPid;
 
+        // Safety: PID values from the OS are always valid i32 on Unix
+        #[allow(clippy::cast_possible_wrap)]
         let nix_pid = NixPid::from_raw(pid as i32);
 
         // Try graceful shutdown first (SIGTERM)
         signal::kill(nix_pid, Signal::SIGTERM)
-            .with_context(|| format!("Failed to send SIGTERM to process {}", pid))?;
+            .with_context(|| format!("Failed to send SIGTERM to process {pid}"))?;
 
         // Wait briefly for graceful shutdown
         std::thread::sleep(std::time::Duration::from_secs(2));
@@ -205,7 +207,7 @@ pub fn kill_instance(pid: u32) -> Result<()> {
 
             // Force kill with SIGKILL
             signal::kill(nix_pid, Signal::SIGKILL)
-                .with_context(|| format!("Failed to send SIGKILL to process {}", pid))?;
+                .with_context(|| format!("Failed to send SIGKILL to process {pid}"))?;
         }
     }
 
