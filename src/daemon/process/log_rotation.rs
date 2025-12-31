@@ -60,13 +60,13 @@ pub fn rotate_log_if_needed(log_path: &Path, config: &LogRotationConfig) -> Resu
     );
 
     // Clean up old rotated files
-    cleanup_old_logs(log_path, config.max_files)?;
+    cleanup_old_logs(log_path, config.max_files);
 
     Ok(true)
 }
 
 /// Cleans up old rotated log files, keeping only the most recent ones.
-pub(crate) fn cleanup_old_logs(log_path: &Path, max_files: usize) -> Result<()> {
+pub(crate) fn cleanup_old_logs(log_path: &Path, max_files: usize) {
     let log_dir = log_path.parent().unwrap_or(Path::new("."));
     let log_name = log_path.file_name().unwrap_or_default().to_string_lossy();
 
@@ -104,8 +104,6 @@ pub(crate) fn cleanup_old_logs(log_path: &Path, max_files: usize) -> Result<()> 
             tracing::debug!(path = %path.display(), "Deleted old rotated log");
         }
     }
-
-    Ok(())
 }
 
 /// Rotates all log files in the log directory.
@@ -241,7 +239,7 @@ mod tests {
         }
 
         // Keep only 2 files
-        cleanup_old_logs(&log_file, 2).unwrap();
+        cleanup_old_logs(&log_file, 2);
 
         // Count remaining rotated files
         let remaining: Vec<_> = fs::read_dir(temp_dir.path())

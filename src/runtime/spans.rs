@@ -12,10 +12,12 @@
 //!     └── handler.orders
 //! ```
 
-use serde::Serialize;
+use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+
+use serde::Serialize;
 
 /// Global counter for generating unique span IDs within a process.
 static SPAN_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -37,6 +39,17 @@ pub enum SpanStatus {
     Error,
     /// Operation timed out
     Timeout,
+}
+
+impl fmt::Display for SpanStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Ok => "ok",
+            Self::Error => "error",
+            Self::Timeout => "timeout",
+        };
+        write!(f, "{s}")
+    }
 }
 
 /// A timing span that tracks the duration of an operation.

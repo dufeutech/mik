@@ -56,11 +56,15 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use tokio::sync::RwLock;
 use tracing::info;
 
 use crate::manifest::LbConfig;
+
+/// Default address for the load balancer to listen on.
+/// This is a valid socket address constant - parsing cannot fail.
+const DEFAULT_LISTEN_ADDR: &str = "0.0.0.0:3000";
 
 /// Configuration for the load balancer.
 #[derive(Debug, Clone)]
@@ -87,9 +91,11 @@ pub struct LoadBalancerConfig {
 impl Default for LoadBalancerConfig {
     fn default() -> Self {
         Self {
-            listen_addr: "0.0.0.0:3000"
+            // SAFETY: DEFAULT_LISTEN_ADDR is a compile-time constant with a known-valid format.
+            // Parsing "0.0.0.0:3000" cannot fail as it's a valid IPv4 address with port.
+            listen_addr: DEFAULT_LISTEN_ADDR
                 .parse()
-                .expect("valid default listen address"),
+                .expect("DEFAULT_LISTEN_ADDR is a valid socket address"),
             backends: vec![],
             health_check: HealthCheckConfig::default(),
             request_timeout: Duration::from_secs(30),
@@ -174,7 +180,11 @@ pub struct LoadBalancer {
 
 impl LoadBalancer {
     /// Create a new load balancer with the given configuration.
-    pub fn new(config: LoadBalancerConfig) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP client cannot be created (e.g., TLS configuration issues).
+    pub fn new(config: LoadBalancerConfig) -> Result<Self> {
         let backends: Vec<Backend> = config
             .backends
             .iter()
@@ -198,19 +208,23 @@ impl LoadBalancer {
 
         let client = client_builder
             .build()
-            .expect("failed to create HTTP client - check TLS configuration");
+            .context("failed to create HTTP client - check TLS configuration")?;
 
-        Self {
+        Ok(Self {
             config,
             backends: Arc::new(RwLock::new(backends)),
             selection: Arc::new(RwLock::new(selection)),
             client,
-        }
+        })
     }
 
     /// Create a load balancer from a list of backend addresses.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP client cannot be created.
     #[allow(dead_code)]
-    pub fn from_backends(listen_addr: SocketAddr, backends: Vec<String>) -> Self {
+    pub fn from_backends(listen_addr: SocketAddr, backends: Vec<String>) -> Result<Self> {
         let config = LoadBalancerConfig {
             listen_addr,
             backends,
@@ -389,7 +403,8 @@ mod tests {
         let lb = LoadBalancer::from_backends(
             "127.0.0.1:8080".parse().unwrap(),
             vec!["127.0.0.1:3001".to_string(), "127.0.0.1:3002".to_string()],
-        );
+        )
+        .unwrap();
         assert_eq!(lb.config.listen_addr, "127.0.0.1:8080".parse().unwrap());
         assert_eq!(lb.config.backends.len(), 2);
     }

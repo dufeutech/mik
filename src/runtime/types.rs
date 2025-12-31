@@ -3,6 +3,8 @@
 //! This module contains data types used across the runtime for health checks,
 //! error categorization, and memory statistics.
 
+use std::fmt;
+
 use serde::Serialize;
 
 /// Error category for observability.
@@ -28,20 +30,18 @@ pub enum ErrorCategory {
     Internal,
 }
 
-impl ErrorCategory {
-    /// Convert error category to string for logging.
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub fn as_str(&self) -> &'static str {
+impl fmt::Display for ErrorCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ModuleLoad => "module_load",
-            Self::InvalidRequest => "invalid_request",
-            Self::Instantiation => "instantiation",
-            Self::Execution => "execution",
-            Self::StaticFile => "static_file",
-            Self::Timeout => "timeout",
-            Self::Script => "script",
-            Self::Reliability => "reliability",
-            Self::Internal => "internal",
+            Self::ModuleLoad => write!(f, "module_load"),
+            Self::InvalidRequest => write!(f, "invalid_request"),
+            Self::Instantiation => write!(f, "instantiation"),
+            Self::Execution => write!(f, "execution"),
+            Self::StaticFile => write!(f, "static_file"),
+            Self::Timeout => write!(f, "timeout"),
+            Self::Script => write!(f, "script"),
+            Self::Reliability => write!(f, "reliability"),
+            Self::Internal => write!(f, "internal"),
         }
     }
 }

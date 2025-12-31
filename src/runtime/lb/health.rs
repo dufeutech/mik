@@ -19,6 +19,8 @@ use tokio::sync::RwLock;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
+use anyhow::{Context, Result};
+
 use super::Backend;
 use super::metrics::LbMetrics;
 
@@ -107,7 +109,11 @@ pub(super) struct HealthCheck {
 
 impl HealthCheck {
     /// Create a new health check service.
-    pub(super) fn new(config: HealthCheckConfig) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP client cannot be created (e.g., TLS configuration issues).
+    pub(super) fn new(config: HealthCheckConfig) -> Result<Self> {
         // Only create HTTP client if we're doing HTTP health checks
         let client = match &config.check_type {
             HealthCheckType::Http { .. } => Some(
@@ -115,12 +121,12 @@ impl HealthCheck {
                     .timeout(config.timeout)
                     .pool_max_idle_per_host(1)
                     .build()
-                    .expect("failed to create HTTP client - check TLS configuration"),
+                    .context("failed to create HTTP client - check TLS configuration")?,
             ),
             HealthCheckType::Tcp => None,
         };
 
-        Self { config, client }
+        Ok(Self { config, client })
     }
 
     /// Check the health of a single backend.
@@ -133,10 +139,14 @@ impl HealthCheck {
 
     /// Perform an HTTP health check.
     async fn check_http(&self, backend: &Backend, path: &str) -> bool {
+        // SAFETY: `client` is always `Some` when `check_type` is `Http`.
+        // This invariant is established in `new()` where we create the client
+        // only for HTTP health checks, and `check_http` is only called when
+        // `check_type` is `Http` (see the match in `check()`).
         let client = self
             .client
             .as_ref()
-            .expect("HTTP client should exist for HTTP health checks");
+            .expect("HTTP client should exist for HTTP health checks - invariant violation");
         let url = backend.url(path);
 
         match client.get(&url).send().await {
@@ -218,11 +228,18 @@ impl HealthCheck {
 }
 
 /// Run continuous health checks for all backends.
+///
+/// # Panics
+///
+/// Panics if the health check service cannot be created (e.g., TLS configuration issues).
+/// This is acceptable because health checks run in a background task spawned by the load balancer,
+/// and a failure to create the health checker is a fatal configuration error.
 pub(super) async fn run_health_checks(
     backends: Arc<RwLock<Vec<Backend>>>,
     config: HealthCheckConfig,
 ) {
-    let health_check = HealthCheck::new(config.clone());
+    let health_check = HealthCheck::new(config.clone())
+        .expect("failed to create health check service - check TLS configuration");
     let metrics = LbMetrics::new();
     let mut interval = tokio::time::interval(config.interval);
 
@@ -373,14 +390,14 @@ mod tests {
     #[test]
     fn test_health_check_creates_client_for_http() {
         let config = HealthCheckConfig::http("/health");
-        let health_check = HealthCheck::new(config);
+        let health_check = HealthCheck::new(config).unwrap();
         assert!(health_check.client.is_some());
     }
 
     #[test]
     fn test_health_check_no_client_for_tcp() {
         let config = HealthCheckConfig::tcp();
-        let health_check = HealthCheck::new(config);
+        let health_check = HealthCheck::new(config).unwrap();
         assert!(health_check.client.is_none());
     }
 
@@ -396,7 +413,7 @@ mod tests {
             timeout: Duration::from_millis(100),
             ..HealthCheckConfig::tcp()
         };
-        let health_check = HealthCheck::new(config);
+        let health_check = HealthCheck::new(config).unwrap();
 
         // Health check should pass
         let result = health_check.check(&backend).await;
@@ -420,7 +437,7 @@ mod tests {
             timeout: Duration::from_millis(100),
             ..HealthCheckConfig::tcp()
         };
-        let health_check = HealthCheck::new(config);
+        let health_check = HealthCheck::new(config).unwrap();
 
         // Health check should fail
         let result = health_check.check(&backend).await;
@@ -435,7 +452,7 @@ mod tests {
             timeout: Duration::from_millis(100),
             ..HealthCheckConfig::tcp()
         };
-        let health_check = HealthCheck::new(config);
+        let health_check = HealthCheck::new(config).unwrap();
 
         // Health check should fail
         let result = health_check.check(&backend).await;
@@ -451,7 +468,7 @@ mod tests {
             timeout: Duration::from_millis(50), // Very short timeout
             ..HealthCheckConfig::tcp()
         };
-        let health_check = HealthCheck::new(config);
+        let health_check = HealthCheck::new(config).unwrap();
 
         let start = std::time::Instant::now();
         let result = health_check.check(&backend).await;

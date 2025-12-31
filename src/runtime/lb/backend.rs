@@ -11,6 +11,7 @@
 //! Each backend tracks metrics like active requests, failure counts, and supports
 //! optional circuit breaker integration for fault isolation.
 
+use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;
 
@@ -30,6 +31,18 @@ pub enum BackendState {
     Unknown,
     /// Backend is being drained (no new requests, completing existing ones).
     Draining,
+}
+
+impl fmt::Display for BackendState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Healthy => "healthy",
+            Self::Unhealthy => "unhealthy",
+            Self::Unknown => "unknown",
+            Self::Draining => "draining",
+        };
+        write!(f, "{s}")
+    }
 }
 
 /// Default maximum concurrent connections per backend.

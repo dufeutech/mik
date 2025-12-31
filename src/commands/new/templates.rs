@@ -2,9 +2,14 @@
 //!
 //! Templates are embedded at compile-time using `include_str!()`.
 
-use anyhow::Result;
+use std::fmt;
 use std::fs;
 use std::path::Path;
+
+use anyhow::{Context, Result};
+
+/// Default version for new projects.
+pub const DEFAULT_VERSION: &str = "0.1.0";
 
 /// Supported programming languages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -14,29 +19,33 @@ pub enum Language {
     TypeScript,
 }
 
-impl Language {
-    /// Parse language from string.
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for Language {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "rust" | "rs" => Some(Self::Rust),
-            "typescript" | "ts" => Some(Self::TypeScript),
-            _ => None,
+            "rust" | "rs" => Ok(Self::Rust),
+            "typescript" | "ts" => Ok(Self::TypeScript),
+            _ => Err(format!("unknown language: {s}")),
         }
     }
+}
 
-    /// Display name for the language.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Rust => "Rust",
-            Self::TypeScript => "TypeScript",
-        }
-    }
-
+impl Language {
     /// Get available templates for this language.
     pub fn available_templates(&self) -> &[Template] {
         match self {
             Self::Rust => &[Template::Basic, Template::RestApi],
             Self::TypeScript => &[Template::Basic],
+        }
+    }
+}
+
+impl fmt::Display for Language {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Rust => write!(f, "Rust"),
+            Self::TypeScript => write!(f, "TypeScript"),
         }
     }
 }
@@ -49,29 +58,33 @@ pub enum Template {
     RestApi,
 }
 
-impl Template {
-    /// Parse template from string.
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for Template {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "basic" => Some(Self::Basic),
-            "rest-api" | "restapi" | "rest_api" => Some(Self::RestApi),
-            _ => None,
+            "basic" => Ok(Self::Basic),
+            "rest-api" | "restapi" | "rest_api" => Ok(Self::RestApi),
+            _ => Err(format!("unknown template: {s}")),
         }
     }
+}
 
-    /// Display name for the template.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Basic => "basic",
-            Self::RestApi => "rest-api",
-        }
-    }
-
+impl Template {
     /// Description of the template.
     pub fn description(&self) -> &'static str {
         match self {
             Self::Basic => "Simple hello world handler",
             Self::RestApi => "CRUD REST API with typed inputs",
+        }
+    }
+}
+
+impl fmt::Display for Template {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Basic => write!(f, "basic"),
+            Self::RestApi => write!(f, "rest-api"),
         }
     }
 }
@@ -84,9 +97,7 @@ pub struct TemplateContext {
     pub author_name: Option<String>,
     pub author_email: Option<String>,
     pub year: String,
-    /// Reserved for future library component support
-    #[allow(dead_code)]
-    pub is_lib: bool,
+    pub version: String,
 }
 
 impl TemplateContext {
@@ -101,6 +112,7 @@ impl TemplateContext {
                 self.author_email.as_deref().unwrap_or(""),
             )
             .replace("{{YEAR}}", &self.year)
+            .replace("{{VERSION}}", &self.version)
     }
 }
 
@@ -113,7 +125,7 @@ pub fn generate_project(
 ) -> Result<()> {
     match lang {
         Language::Rust => generate_rust_project(dir, template, ctx),
-        Language::TypeScript => generate_typescript_project(dir, ctx),
+        Language::TypeScript => generate_typescript_project(dir, template, ctx),
     }
 }
 
@@ -121,37 +133,47 @@ pub fn generate_project(
 // Rust Templates
 // ============================================================================
 
+/// Create common project directories.
+fn create_common_dirs(dir: &Path) -> Result<()> {
+    fs::create_dir_all(dir.join("src")).context("failed to create src directory")?;
+    fs::create_dir_all(dir.join("wit/deps/core"))
+        .context("failed to create wit/deps/core directory")?;
+    Ok(())
+}
+
 fn generate_rust_project(dir: &Path, template: Template, ctx: &TemplateContext) -> Result<()> {
     // Create directories
-    fs::create_dir_all(dir.join("src"))?;
-    fs::create_dir_all(dir.join("wit/deps/core"))?;
-    fs::create_dir_all(dir.join("modules"))?;
+    create_common_dirs(dir)?;
+    fs::create_dir_all(dir.join("modules")).context("failed to create modules directory")?;
 
     // Cargo.toml
     let cargo_toml = ctx.render(RUST_CARGO_TOML);
-    fs::write(dir.join("Cargo.toml"), cargo_toml)?;
+    fs::write(dir.join("Cargo.toml"), &cargo_toml).context("failed to write Cargo.toml")?;
 
     // mik.toml
-    let mik_toml = generate_mik_toml(ctx, Language::Rust);
-    fs::write(dir.join("mik.toml"), mik_toml)?;
+    let mik_toml = generate_mik_toml(ctx, Language::Rust)?;
+    fs::write(dir.join("mik.toml"), &mik_toml).context("failed to write mik.toml")?;
 
     // src/lib.rs
-    let lib_rs = match template {
-        Template::Basic => ctx.render(RUST_BASIC_LIB_RS),
-        Template::RestApi => ctx.render(RUST_RESTAPI_LIB_RS),
+    let lib_content = match template {
+        Template::Basic => RUST_BASIC_LIB_RS,
+        Template::RestApi => RUST_RESTAPI_LIB_RS,
     };
-    fs::write(dir.join("src/lib.rs"), lib_rs)?;
+    let lib_rs = ctx.render(&format!("{RUST_LIB_HEADER}{lib_content}"));
+    fs::write(dir.join("src/lib.rs"), &lib_rs).context("failed to write src/lib.rs")?;
 
     // WIT files
     let world_wit = ctx.render(RUST_WORLD_WIT);
-    fs::write(dir.join("wit/world.wit"), world_wit)?;
-    fs::write(dir.join("wit/deps/core/core.wit"), RUST_CORE_WIT)?;
+    fs::write(dir.join("wit/world.wit"), &world_wit).context("failed to write wit/world.wit")?;
+    fs::write(dir.join("wit/deps/core/core.wit"), CORE_WIT)
+        .context("failed to write wit/deps/core/core.wit")?;
 
     // .gitignore
-    fs::write(dir.join(".gitignore"), RUST_GITIGNORE)?;
+    let gitignore = format!("{RUST_GITIGNORE_EXTRA}{COMMON_GITIGNORE}");
+    fs::write(dir.join(".gitignore"), &gitignore).context("failed to write .gitignore")?;
 
     // modules/.gitkeep
-    fs::write(dir.join("modules/.gitkeep"), "")?;
+    fs::write(dir.join("modules/.gitkeep"), "").context("failed to write modules/.gitkeep")?;
 
     Ok(())
 }
@@ -160,36 +182,52 @@ fn generate_rust_project(dir: &Path, template: Template, ctx: &TemplateContext) 
 // TypeScript Templates
 // ============================================================================
 
-fn generate_typescript_project(dir: &Path, ctx: &TemplateContext) -> Result<()> {
+fn generate_typescript_project(
+    dir: &Path,
+    template: Template,
+    ctx: &TemplateContext,
+) -> Result<()> {
+    // Currently only Basic template is supported for TypeScript
+    // This match ensures consistency with generate_rust_project signature
+    // and allows for future template expansion
+    let _ = match template {
+        Template::Basic => template,
+        // RestApi and other templates not yet implemented for TypeScript
+        _ => Template::Basic,
+    };
+
     // Create directories
-    fs::create_dir_all(dir.join("src"))?;
-    fs::create_dir_all(dir.join("wit/deps/core"))?;
+    create_common_dirs(dir)?;
 
     // mik.toml
-    let mik_toml = generate_mik_toml(ctx, Language::TypeScript);
-    fs::write(dir.join("mik.toml"), mik_toml)?;
+    let mik_toml = generate_mik_toml(ctx, Language::TypeScript)?;
+    fs::write(dir.join("mik.toml"), &mik_toml).context("failed to write mik.toml")?;
 
     // package.json
     let package_json = ctx.render(TS_PACKAGE_JSON);
-    fs::write(dir.join("package.json"), package_json)?;
+    fs::write(dir.join("package.json"), &package_json).context("failed to write package.json")?;
 
     // tsconfig.json
-    fs::write(dir.join("tsconfig.json"), TS_TSCONFIG)?;
+    fs::write(dir.join("tsconfig.json"), TS_TSCONFIG).context("failed to write tsconfig.json")?;
 
     // src/component.ts
     let component_ts = ctx.render(TS_COMPONENT);
-    fs::write(dir.join("src/component.ts"), component_ts)?;
+    fs::write(dir.join("src/component.ts"), &component_ts)
+        .context("failed to write src/component.ts")?;
 
     // WIT files for mik:core/handler (embedded, no fetch needed)
-    fs::write(dir.join("wit/handler.wit"), TS_HANDLER_WIT)?;
-    fs::write(dir.join("wit/deps/core/core.wit"), TS_CORE_WIT)?;
+    fs::write(dir.join("wit/handler.wit"), TS_HANDLER_WIT)
+        .context("failed to write wit/handler.wit")?;
+    fs::write(dir.join("wit/deps/core/core.wit"), CORE_WIT)
+        .context("failed to write wit/deps/core/core.wit")?;
 
     // README.md
     let readme = ctx.render(TS_README);
-    fs::write(dir.join("README.md"), readme)?;
+    fs::write(dir.join("README.md"), &readme).context("failed to write README.md")?;
 
     // .gitignore
-    fs::write(dir.join(".gitignore"), TS_GITIGNORE)?;
+    let gitignore = format!("{TS_GITIGNORE_EXTRA}{COMMON_GITIGNORE}");
+    fs::write(dir.join(".gitignore"), &gitignore).context("failed to write .gitignore")?;
 
     Ok(())
 }
@@ -198,13 +236,13 @@ fn generate_typescript_project(dir: &Path, ctx: &TemplateContext) -> Result<()> 
 // mik.toml generation
 // ============================================================================
 
-fn generate_mik_toml(ctx: &TemplateContext, lang: Language) -> String {
+fn generate_mik_toml(ctx: &TemplateContext, lang: Language) -> Result<String> {
     use crate::manifest::{Author, CompositionConfig, Manifest, Project, ServerConfig};
 
     let manifest = Manifest {
         project: Project {
             name: ctx.project_name.clone(),
-            version: "0.1.0".to_string(),
+            version: ctx.version.clone(),
             description: Some("A WASI HTTP component".to_string()),
             authors: if let Some(ref name) = ctx.author_name {
                 vec![Author {
@@ -232,17 +270,27 @@ fn generate_mik_toml(ctx: &TemplateContext, lang: Language) -> String {
         ..Default::default()
     };
 
-    toml::to_string_pretty(&manifest).unwrap_or_default()
+    toml::to_string_pretty(&manifest).context("failed to serialize mik.toml")
 }
 
 // ============================================================================
 // Embedded Template Content
 // ============================================================================
 
+/// Common header for all Rust lib.rs templates.
+/// Contains bindings import and mik-sdk prelude.
+const RUST_LIB_HEADER: &str = r##"#[allow(warnings)]
+mod bindings;
+
+use bindings::exports::mik::core::handler::{self, Guest, Response};
+use mik_sdk::prelude::*;
+
+"##;
+
 // --- Rust Basic ---
 const RUST_CARGO_TOML: &str = r#"[package]
 name = "{{PROJECT_NAME}}"
-version = "0.1.0"
+version = "{{VERSION}}"
 edition = "2024"
 
 [lib]
@@ -265,12 +313,6 @@ world = "{{PROJECT_NAME}}"
 
 const RUST_BASIC_LIB_RS: &str = r##"//! {{PROJECT_NAME}} - A mik HTTP handler
 
-#[allow(warnings)]
-mod bindings;
-
-use bindings::exports::mik::core::handler::{self, Guest, Response};
-use mik_sdk::prelude::*;
-
 routes! {
     GET "/" | "" => home,
     GET "/health" => health,
@@ -292,12 +334,6 @@ const RUST_RESTAPI_LIB_RS: &str = r##"//! {{PROJECT_NAME}} - A REST API built wi
 //!
 //! Demonstrates: CRUD, Path params, Query strings, JSON bodies
 //! Uses typed inputs in routes for automatic extraction
-
-#[allow(warnings)]
-mod bindings;
-
-use bindings::exports::mik::core::handler::{self, Guest, Response};
-use mik_sdk::prelude::*;
 
 // ---- Types ----
 
@@ -349,7 +385,6 @@ fn health(_req: &Request) -> Response {
 }
 
 fn list_items(query: ListQuery, _req: &Request) -> Response {
-    // TODO: Replace with actual database query via sidecar
     let items: Vec<Item> = vec![];
 
     ok!({
@@ -361,13 +396,11 @@ fn list_items(query: ListQuery, _req: &Request) -> Response {
 }
 
 fn get_item(path: ItemPath, _req: &Request) -> Response {
-    // TODO: Replace with actual database lookup via sidecar
     let _ = path.id;
     not_found!("Item not found")
 }
 
 fn create_item(body: ItemInput, _req: &Request) -> Response {
-    // TODO: Replace with actual database insert via sidecar
     let id = random::uuid();
 
     created!("/items/{}", id, Item {
@@ -378,7 +411,6 @@ fn create_item(body: ItemInput, _req: &Request) -> Response {
 }
 
 fn update_item(path: ItemPath, body: ItemInput, _req: &Request) -> Response {
-    // TODO: Replace with actual database update via sidecar
     ok!(Item {
         id: path.id,
         name: body.name,
@@ -387,13 +419,12 @@ fn update_item(path: ItemPath, body: ItemInput, _req: &Request) -> Response {
 }
 
 fn delete_item(path: ItemPath, _req: &Request) -> Response {
-    // TODO: Replace with actual database delete via sidecar
     let _ = path.id;
     no_content!()
 }
 "##;
 
-const RUST_WORLD_WIT: &str = r#"package mik:{{PROJECT_NAME}}@0.1.0;
+const RUST_WORLD_WIT: &str = r#"package mik:{{PROJECT_NAME}}@{{VERSION}};
 
 world {{PROJECT_NAME}} {
     // Export the handler
@@ -401,7 +432,7 @@ world {{PROJECT_NAME}} {
 }
 "#;
 
-const RUST_CORE_WIT: &str = r#"package mik:core@0.1.0;
+const CORE_WIT: &str = r#"package mik:core@0.1.0;
 
 /// Minimal handler interface - all types inline.
 interface handler {
@@ -436,10 +467,12 @@ interface handler {
 }
 "#;
 
-const RUST_GITIGNORE: &str = r#"/target
+/// Common gitignore entries shared across languages.
+const COMMON_GITIGNORE: &str = "*.wasm\n";
+
+const RUST_GITIGNORE_EXTRA: &str = r#"/target
 /modules
 Cargo.lock
-*.wasm
 "#;
 
 // --- TypeScript ---
@@ -487,42 +520,6 @@ const TS_HANDLER_WIT: &str = r#"package mik:handler@0.1.0;
 
 world handler {
     export mik:core/handler@0.1.0;
-}
-"#;
-
-// mik:core interface definition (same as bridge expects)
-const TS_CORE_WIT: &str = r#"package mik:core@0.1.0;
-
-/// Minimal handler interface - all types inline.
-interface handler {
-    /// HTTP methods.
-    enum method {
-        %get,
-        %post,
-        %put,
-        %patch,
-        %delete,
-        %head,
-        %options,
-    }
-
-    /// HTTP request data from the bridge.
-    record request-data {
-        method: method,
-        path: string,
-        headers: list<tuple<string, string>>,
-        body: option<list<u8>>,
-    }
-
-    /// HTTP response.
-    record response {
-        status: u16,
-        headers: list<tuple<string, string>>,
-        body: option<list<u8>>,
-    }
-
-    /// Process an HTTP request and return a response.
-    handle: func(req: request-data) -> response;
 }
 "#;
 
@@ -604,9 +601,8 @@ handles HTTP protocol details, so your code just processes requests and returns 
 See: https://dufeut.github.io/mik/guides/building-components/
 "#;
 
-const TS_GITIGNORE: &str = r#"node_modules/
+const TS_GITIGNORE_EXTRA: &str = r#"node_modules/
 dist/
-*.wasm
 "#;
 
 #[cfg(test)]
@@ -615,19 +611,19 @@ mod tests {
 
     #[test]
     fn test_language_from_str() {
-        assert_eq!(Language::from_str("rust"), Some(Language::Rust));
-        assert_eq!(Language::from_str("rs"), Some(Language::Rust));
-        assert_eq!(Language::from_str("typescript"), Some(Language::TypeScript));
-        assert_eq!(Language::from_str("ts"), Some(Language::TypeScript));
-        assert_eq!(Language::from_str("invalid"), None);
+        assert_eq!("rust".parse::<Language>(), Ok(Language::Rust));
+        assert_eq!("rs".parse::<Language>(), Ok(Language::Rust));
+        assert_eq!("typescript".parse::<Language>(), Ok(Language::TypeScript));
+        assert_eq!("ts".parse::<Language>(), Ok(Language::TypeScript));
+        assert!("invalid".parse::<Language>().is_err());
     }
 
     #[test]
     fn test_template_from_str() {
-        assert_eq!(Template::from_str("basic"), Some(Template::Basic));
-        assert_eq!(Template::from_str("rest-api"), Some(Template::RestApi));
-        assert_eq!(Template::from_str("restapi"), Some(Template::RestApi));
-        assert_eq!(Template::from_str("invalid"), None);
+        assert_eq!("basic".parse::<Template>(), Ok(Template::Basic));
+        assert_eq!("rest-api".parse::<Template>(), Ok(Template::RestApi));
+        assert_eq!("restapi".parse::<Template>(), Ok(Template::RestApi));
+        assert!("invalid".parse::<Template>().is_err());
     }
 
     #[test]
@@ -638,7 +634,7 @@ mod tests {
             author_name: Some("Test Author".to_string()),
             author_email: Some("test@example.com".to_string()),
             year: "2025".to_string(),
-            is_lib: false,
+            version: DEFAULT_VERSION.to_string(),
         };
 
         let input = "name = \"{{PROJECT_NAME}}\"\nauthor = \"{{AUTHOR_NAME}}\"";

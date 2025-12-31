@@ -291,7 +291,7 @@ impl SharedState {
         let cache_bytes = self.cache.weighted_size() as usize;
 
         HealthStatus {
-            status: "ready".to_string(),
+            status: constants::HEALTH_STATUS_READY.to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
             cache_size,
             cache_capacity: self.config.cache_size,
@@ -515,7 +515,7 @@ impl Host {
         let max_bytes = if config.aot_cache_max_mb > 0 {
             (config.aot_cache_max_mb as u64) * 1024 * 1024
         } else {
-            1024 * 1024 * 1024 // Default: 1GB
+            constants::DEFAULT_AOT_CACHE_SIZE_BYTES
         };
 
         let cache = aot_cache::AotCache::new(aot_cache::AotCacheConfig {
@@ -566,7 +566,7 @@ impl Host {
             .weigher(|_key: &String, value: &Arc<CachedComponent>| -> u32 {
                 value.size_bytes.min(u32::MAX as usize) as u32
             })
-            .time_to_idle(Duration::from_secs(3600))
+            .time_to_idle(Duration::from_secs(constants::DEFAULT_AOT_CACHE_TTI_SECS))
             .build();
 
         let (modules_dir, single_component, single_component_name) =
@@ -1057,12 +1057,12 @@ mod aot_cache_property_tests {
         ///
         /// Even a single bit flip should produce a completely different key.
         #[test]
-        fn single_byte_change_changes_key(bytes in small_bytes().prop_filter("need at least 1 byte", |v| !v.is_empty())) {
+        fn single_byte_change_changes_key(mut bytes in small_bytes().prop_filter("need at least 1 byte", |v| !v.is_empty())) {
             let key1 = AotCache::compute_key(&bytes);
 
             // Flip one byte
-            let mut modified = bytes.clone();
-            modified[0] = modified[0].wrapping_add(1);
+            bytes[0] = bytes[0].wrapping_add(1);
+            let modified = bytes;
 
             let key2 = AotCache::compute_key(&modified);
 

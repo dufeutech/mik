@@ -16,6 +16,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::str::FromStr;
 
 mod commands;
 mod config;
@@ -211,9 +212,6 @@ enum Commands {
         /// Skip interactive prompts, use defaults
         #[arg(long, short = 'y')]
         yes: bool,
-        /// Create as library component (Rust only)
-        #[arg(long)]
-        lib: bool,
     },
     /// Add dependencies to mik.toml
     ///
@@ -494,14 +492,13 @@ async fn main() -> Result<()> {
             lang,
             template,
             yes,
-            lib,
         } => {
             use commands::new::{Language, NewOptions, Template};
 
             // Parse language
             let lang = lang
                 .as_deref()
-                .and_then(Language::from_str)
+                .and_then(|s| Language::from_str(s).ok())
                 .unwrap_or_default();
 
             // Check for GitHub template
@@ -514,7 +511,7 @@ async fn main() -> Result<()> {
             let template = if github_template.is_none() {
                 template
                     .as_deref()
-                    .and_then(Template::from_str)
+                    .and_then(|s| Template::from_str(s).ok())
                     .unwrap_or_default()
             } else {
                 Template::default()
@@ -525,7 +522,6 @@ async fn main() -> Result<()> {
                 lang,
                 template,
                 yes,
-                lib,
                 github_template,
             };
 

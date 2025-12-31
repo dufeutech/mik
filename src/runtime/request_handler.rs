@@ -160,7 +160,7 @@ pub async fn handle_request(
             let category = categorize_error(e);
             error!(
                 error = %e,
-                category = category.as_str(),
+                category = %category,
                 duration_ms = duration.as_millis() as u64,
                 "Request failed"
             );

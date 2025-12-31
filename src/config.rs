@@ -1033,7 +1033,7 @@ version = "0.1.0"
                     description: None,
                 },
                 routes: vec![RouteConfig {
-                    name: name.clone(), // Same as package name
+                    name, // Same as package name
                     path,
                     method,
                     description: None,

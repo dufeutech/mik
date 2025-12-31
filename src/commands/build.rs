@@ -400,14 +400,7 @@ async fn compose_http_handler(
 
     println!("  Bridge: {}", bridge.display());
 
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
-    );
-    spinner.set_message("Composing with bridge...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
+    let spinner = create_spinner("Composing with bridge...");
 
     // Compose bridge with handler
     // wac plug bridge.wasm --plug handler.wasm -o service.wasm
@@ -503,14 +496,7 @@ async fn download_bridge() -> Result<PathBuf> {
     // Create directory if needed
     fs::create_dir_all(&tools_dir).context("Failed to create ~/.mik/tools/bridge directory")?;
 
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
-    );
-    spinner.set_message("Downloading bridge from registry...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
+    let spinner = create_spinner("Downloading bridge from registry...");
 
     // Use pull_oci from pull module
     match super::pull::pull_oci(BRIDGE_OCI_REF, &output_path).await {
@@ -814,14 +800,7 @@ fn optimize_component(wasm_path: &Path, size_before: u64) -> Result<()> {
         return Ok(());
     }
 
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
-    );
-    spinner.set_message("Stripping component (removing debug info)...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
+    let spinner = create_spinner("Stripping component (removing debug info)...");
 
     // Run wasm-tools strip --all (removes names, debug info, custom sections)
     let output = Command::new("wasm-tools")
@@ -856,14 +835,7 @@ fn optimize_core_module(wasm_path: &Path, size_before: u64) -> Result<()> {
         return Ok(());
     }
 
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
-    );
-    spinner.set_message("Optimizing WASM for size...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(SPINNER_TICK_INTERVAL_MS));
+    let spinner = create_spinner("Optimizing WASM for size...");
 
     // Run wasm-opt -Oz (optimize for size) in-place
     let output = Command::new("wasm-opt")

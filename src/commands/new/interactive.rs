@@ -32,7 +32,7 @@ fn prompt_language(default: Language) -> Result<Language> {
         "" | "1" | "rust" | "rs" => Language::Rust,
         "2" | "typescript" | "ts" => Language::TypeScript,
         _ => {
-            println!("Invalid choice, using {}", default.display_name());
+            println!("Invalid choice, using {default}");
             default
         },
     };
@@ -52,7 +52,7 @@ fn prompt_template(lang: Language, default: Template) -> Result<Template> {
     println!();
     println!("Select template:");
     for (i, t) in templates.iter().enumerate() {
-        println!("  [{}] {} - {}", i + 1, t.display_name(), t.description());
+        println!("  [{}] {t} - {}", i + 1, t.description());
     }
     print!("\nEnter choice [1]: ");
     io::stdout().flush()?;
@@ -68,15 +68,12 @@ fn prompt_template(lang: Language, default: Template) -> Result<Template> {
             if templates.contains(&Template::RestApi) {
                 Template::RestApi
             } else {
-                println!(
-                    "Template not available for {}, using basic",
-                    lang.display_name()
-                );
+                println!("Template not available for {lang}, using basic");
                 Template::Basic
             }
         },
         _ => {
-            println!("Invalid choice, using {}", default.display_name());
+            println!("Invalid choice, using {default}");
             default
         },
     };
@@ -89,9 +86,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_language_display_name() {
-        assert_eq!(Language::Rust.display_name(), "Rust");
-        assert_eq!(Language::TypeScript.display_name(), "TypeScript");
+    fn test_language_display() {
+        assert_eq!(Language::Rust.to_string(), "Rust");
+        assert_eq!(Language::TypeScript.to_string(), "TypeScript");
     }
 
     #[test]

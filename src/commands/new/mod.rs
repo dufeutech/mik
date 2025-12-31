@@ -26,8 +26,6 @@ pub struct NewOptions {
     pub template: Template,
     /// Skip interactive prompts
     pub yes: bool,
-    /// Create as library component (Rust only)
-    pub lib: bool,
     /// GitHub template (overrides lang/template)
     pub github_template: Option<String>,
 }
@@ -39,7 +37,6 @@ impl Default for NewOptions {
             lang: Language::Rust,
             template: Template::Basic,
             yes: false,
-            lib: false,
             github_template: None,
         }
     }
@@ -73,12 +70,7 @@ pub fn execute(options: NewOptions) -> Result<()> {
         (options.lang, options.template)
     };
 
-    println!(
-        "Creating new {} project: {} (template: {})",
-        lang.display_name(),
-        project_name,
-        template.display_name()
-    );
+    println!("Creating new {lang} project: {project_name} (template: {template})");
 
     // Create project directory
     fs::create_dir_all(project_dir).context("Failed to create project directory")?;
@@ -93,7 +85,7 @@ pub fn execute(options: NewOptions) -> Result<()> {
         author_name: git_name.clone(),
         author_email: git_email.clone(),
         year: chrono::Utc::now().format("%Y").to_string(),
-        is_lib: options.lib,
+        version: templates::DEFAULT_VERSION.to_string(),
     };
 
     // Generate project files from template
@@ -171,6 +163,5 @@ mod tests {
         assert_eq!(opts.lang, Language::Rust);
         assert_eq!(opts.template, Template::Basic);
         assert!(!opts.yes);
-        assert!(!opts.lib);
     }
 }

@@ -51,7 +51,8 @@ pub async fn execute(
 ) -> Result<()> {
     // Set MIK_LOCAL env var if --local flag is set
     if local_only {
-        // SAFETY: We're setting env var before spawning any threads
+        // SAFETY: Called before spawning threads. Environment variable modification
+        // is safe in single-threaded context. Sets MIK_LOCAL to signal dev mode.
         unsafe { std::env::set_var("MIK_LOCAL", "1") };
     }
 
@@ -277,7 +278,7 @@ async fn run_with_lb(
         ..Default::default()
     };
 
-    let lb = LoadBalancer::new(lb_config);
+    let lb = LoadBalancer::new(lb_config)?;
 
     // Run load balancer with Ctrl+C handling
     tokio::select! {

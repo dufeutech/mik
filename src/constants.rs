@@ -113,3 +113,22 @@ pub const DEFAULT_STATIC_DIR: &str = "static";
 
 /// Configuration file name.
 pub const CONFIG_FILE_NAME: &str = "mik.toml";
+
+// =============================================================================
+// Health Check
+// =============================================================================
+
+/// Health check status indicating the service is ready.
+pub const HEALTH_STATUS_READY: &str = "ready";
+
+// =============================================================================
+// AOT Cache
+// =============================================================================
+
+/// Default AOT cache time-to-idle in seconds (1 hour).
+/// Entries not accessed within this time are evicted.
+pub const DEFAULT_AOT_CACHE_TTI_SECS: u64 = 3600;
+
+/// Default AOT cache size in bytes (1 GB).
+/// Maximum memory used by the AOT compiled module cache.
+pub const DEFAULT_AOT_CACHE_SIZE_BYTES: u64 = 1024 * 1024 * 1024;
