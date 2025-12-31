@@ -802,7 +802,7 @@ impl Drop for Host {
 }
 
 /// Get current memory usage (platform-specific).
-const fn get_memory_usage() -> Option<usize> {
+fn get_memory_usage() -> Option<usize> {
     #[cfg(target_os = "linux")]
     {
         std::fs::read_to_string("/proc/self/statm")
