@@ -5,7 +5,7 @@
 //!
 //! - **Closed**: Normal operation, requests flow through
 //! - **Open**: Backend is failing, requests are blocked
-//! - **HalfOpen**: Testing if backend has recovered
+//! - **`HalfOpen`**: Testing if backend has recovered
 //!
 //! # State Transitions
 //!
@@ -159,7 +159,7 @@ impl CircuitBreaker {
     ///
     /// Returns `true` if:
     /// - State is Closed (normal operation)
-    /// - State is HalfOpen (testing recovery)
+    /// - State is `HalfOpen` (testing recovery)
     ///
     /// Returns `false` if:
     /// - State is Open (blocking requests)
@@ -170,8 +170,8 @@ impl CircuitBreaker {
     /// Record a successful request.
     ///
     /// In Closed state: resets failure count.
-    /// In HalfOpen state: increments success count, may transition to Closed.
-    /// In Open state: ignored (shouldn't happen if is_available is checked).
+    /// In `HalfOpen` state: increments success count, may transition to Closed.
+    /// In Open state: ignored (shouldn't happen if `is_available` is checked).
     pub fn record_success(&self) {
         let current_state = self.state();
 
@@ -198,8 +198,8 @@ impl CircuitBreaker {
     /// Record a failed request.
     ///
     /// In Closed state: increments failure count, may transition to Open.
-    /// In HalfOpen state: immediately transitions to Open.
-    /// In Open state: ignored (shouldn't happen if is_available is checked).
+    /// In `HalfOpen` state: immediately transitions to Open.
+    /// In Open state: ignored (shouldn't happen if `is_available` is checked).
     pub fn record_failure(&self) {
         let current_state = self.state();
 
@@ -249,7 +249,7 @@ impl CircuitBreaker {
         *self.opened_at.write() = Some(Instant::now());
     }
 
-    /// Transition to HalfOpen state.
+    /// Transition to `HalfOpen` state.
     fn transition_to_half_open(&self) {
         self.state
             .store(CircuitBreakerState::HalfOpen as u8, Ordering::Release);

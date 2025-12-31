@@ -3,7 +3,7 @@
 //! Defines the three states a circuit breaker can be in:
 //! - **Closed**: Normal operation, requests allowed
 //! - **Open**: Too many failures, requests rejected
-//! - **HalfOpen**: Testing recovery - only ONE probe request allowed
+//! - **`HalfOpen`**: Testing recovery - only ONE probe request allowed
 
 use std::time::Instant;
 

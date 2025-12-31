@@ -1,6 +1,6 @@
 //! Handler call execution for scripts.
 //!
-//! Executes WASM handler calls initiated by `host.call()` from JavaScript.
+//! Executes WASM handler calls initiated by `host.call()` from `JavaScript`.
 
 use anyhow::{Context, Result};
 use http_body_util::Full;

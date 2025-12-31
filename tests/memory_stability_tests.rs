@@ -278,7 +278,7 @@ async fn test_sequential_requests_memory_stable() {
 
         if (i + 1) % checkpoint_interval == 0 {
             let elapsed = start.elapsed();
-            let rps = (i + 1) as f64 / elapsed.as_secs_f64();
+            let rps = f64::from(i + 1) / elapsed.as_secs_f64();
             println!(
                 "Checkpoint {}/{}: {} success, {} errors, {:.1} req/s",
                 i + 1,
@@ -295,7 +295,7 @@ async fn test_sequential_requests_memory_stable() {
         "Completed {} requests in {:.2}s ({:.1} req/s)",
         total_requests,
         elapsed.as_secs_f64(),
-        total_requests as f64 / elapsed.as_secs_f64()
+        f64::from(total_requests) / elapsed.as_secs_f64()
     );
     println!("Success: {}, Errors: {}", success_count, error_count);
 
@@ -487,7 +487,7 @@ mod tests {
     fn test_success_rate_calculation() {
         let total = 1000;
         let success = 985;
-        let rate = (success as f64 / total as f64) * 100.0;
+        let rate = (f64::from(success) / f64::from(total)) * 100.0;
 
         assert!(rate >= 98.0, "Success rate should be >= 98%");
     }

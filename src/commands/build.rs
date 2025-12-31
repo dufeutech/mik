@@ -1,6 +1,6 @@
 //! Build WASI component from source.
 //!
-//! Supports multiple languages: Rust (default) and TypeScript.
+//! Supports multiple languages: Rust (default) and `TypeScript`.
 //! Uses cargo-component or jco depending on language.
 //! Optionally composes all dependencies using wac.
 //! Outputs packaged component to dist/ folder.
@@ -193,7 +193,7 @@ fn check_npm() -> bool {
         .unwrap_or(false)
 }
 
-/// Build TypeScript project with jco componentize.
+/// Build `TypeScript` project with jco componentize.
 async fn build_typescript(name: &str) -> Result<(PathBuf, PathBuf)> {
     // Check for package.json
     if !Path::new("package.json").exists() {

@@ -1,4 +1,4 @@
-//! GitHub template fetching.
+//! `GitHub` template fetching.
 //!
 //! Supports:
 //! - `github:user/repo`
@@ -9,12 +9,12 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-/// Create a project from a GitHub template.
+/// Create a project from a `GitHub` template.
 ///
 /// # Arguments
 /// * `dir` - Target directory
 /// * `name` - Project name
-/// * `github_ref` - GitHub reference (e.g., "github:user/repo" or "github:user/repo#branch")
+/// * `github_ref` - `GitHub` reference (e.g., `github:user/repo` or `github:user/repo#branch`)
 pub fn create_from_github(dir: &Path, name: &str, github_ref: &str) -> Result<()> {
     let (repo, branch) = parse_github_ref(github_ref)?;
 
@@ -48,7 +48,7 @@ pub fn create_from_github(dir: &Path, name: &str, github_ref: &str) -> Result<()
     Ok(())
 }
 
-/// Parse GitHub reference into (repo_url, optional_branch).
+/// Parse `GitHub` reference into (`repo_url`, `optional_branch`).
 fn parse_github_ref(github_ref: &str) -> Result<(String, Option<String>)> {
     // Remove "github:" prefix if present
     let cleaned = github_ref.strip_prefix("github:").unwrap_or(github_ref);

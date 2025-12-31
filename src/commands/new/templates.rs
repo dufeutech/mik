@@ -279,13 +279,13 @@ fn generate_mik_toml(ctx: &TemplateContext, lang: Language) -> Result<String> {
 
 /// Common header for all Rust lib.rs templates.
 /// Contains bindings import and mik-sdk prelude.
-const RUST_LIB_HEADER: &str = r##"#[allow(warnings)]
+const RUST_LIB_HEADER: &str = r"#[allow(warnings)]
 mod bindings;
 
 use bindings::exports::mik::core::handler::{self, Guest, Response};
 use mik_sdk::prelude::*;
 
-"##;
+";
 
 // --- Rust Basic ---
 const RUST_CARGO_TOML: &str = r#"[package]
@@ -311,7 +311,7 @@ world = "{{PROJECT_NAME}}"
 "mik:core" = { path = "wit/deps/core" }
 "#;
 
-const RUST_BASIC_LIB_RS: &str = r##"//! {{PROJECT_NAME}} - A mik HTTP handler
+const RUST_BASIC_LIB_RS: &str = r#"//! {{PROJECT_NAME}} - A mik HTTP handler
 
 routes! {
     GET "/" | "" => home,
@@ -328,9 +328,9 @@ fn home(_req: &Request) -> Response {
 fn health(_req: &Request) -> Response {
     ok!({ "status": "healthy" })
 }
-"##;
+"#;
 
-const RUST_RESTAPI_LIB_RS: &str = r##"//! {{PROJECT_NAME}} - A REST API built with mik
+const RUST_RESTAPI_LIB_RS: &str = r#"//! {{PROJECT_NAME}} - A REST API built with mik
 //!
 //! Demonstrates: CRUD, Path params, Query strings, JSON bodies
 //! Uses typed inputs in routes for automatic extraction
@@ -422,17 +422,17 @@ fn delete_item(path: ItemPath, _req: &Request) -> Response {
     let _ = path.id;
     no_content!()
 }
-"##;
+"#;
 
-const RUST_WORLD_WIT: &str = r#"package mik:{{PROJECT_NAME}}@{{VERSION}};
+const RUST_WORLD_WIT: &str = r"package mik:{{PROJECT_NAME}}@{{VERSION}};
 
 world {{PROJECT_NAME}} {
     // Export the handler
     export mik:core/handler@0.1.0;
 }
-"#;
+";
 
-const CORE_WIT: &str = r#"package mik:core@0.1.0;
+const CORE_WIT: &str = r"package mik:core@0.1.0;
 
 /// Minimal handler interface - all types inline.
 interface handler {
@@ -465,15 +465,15 @@ interface handler {
     /// Process an HTTP request and return a response.
     handle: func(req: request-data) -> response;
 }
-"#;
+";
 
 /// Common gitignore entries shared across languages.
 const COMMON_GITIGNORE: &str = "*.wasm\n";
 
-const RUST_GITIGNORE_EXTRA: &str = r#"/target
+const RUST_GITIGNORE_EXTRA: &str = r"/target
 /modules
 Cargo.lock
-"#;
+";
 
 // --- TypeScript ---
 const TS_PACKAGE_JSON: &str = r#"{
@@ -516,12 +516,12 @@ const TS_TSCONFIG: &str = r#"{
 "#;
 
 // WIT files for mik:core/handler (simple interface, composed with bridge)
-const TS_HANDLER_WIT: &str = r#"package mik:handler@0.1.0;
+const TS_HANDLER_WIT: &str = r"package mik:handler@0.1.0;
 
 world handler {
     export mik:core/handler@0.1.0;
 }
-"#;
+";
 
 const TS_COMPONENT: &str = r#"// {{PROJECT_NAME}} - A mik handler in TypeScript
 //
@@ -564,7 +564,7 @@ export const handler = {
 };
 "#;
 
-const TS_README: &str = r#"# {{PROJECT_NAME}}
+const TS_README: &str = r"# {{PROJECT_NAME}}
 
 A mik handler written in TypeScript using the simple `mik:core/handler` interface.
 
@@ -599,11 +599,11 @@ handles HTTP protocol details, so your code just processes requests and returns 
 ## Documentation
 
 See: https://dufeut.github.io/mik/guides/building-components/
-"#;
+";
 
-const TS_GITIGNORE_EXTRA: &str = r#"node_modules/
+const TS_GITIGNORE_EXTRA: &str = r"node_modules/
 dist/
-"#;
+";
 
 #[cfg(test)]
 mod tests {

@@ -22,7 +22,7 @@ pub const MAX_BODY_SIZE_BYTES: usize = 10 * 1024 * 1024;
 pub const MAX_RESPONSE_SIZE_BYTES: usize = 50 * 1024 * 1024;
 
 /// Maximum module name length (256 bytes).
-/// Prevents filesystem issues and DoS via long names.
+/// Prevents filesystem issues and `DoS` via long names.
 pub const MAX_MODULE_NAME_LEN: usize = 256;
 
 /// Maximum path length for security validation (4096 bytes).

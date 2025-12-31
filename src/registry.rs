@@ -1,6 +1,6 @@
 //! Registry operations for WASM components.
 //!
-//! Downloads from any HTTP(S) URL, publishes to GitHub Releases via `gh` CLI.
+//! Downloads from any HTTP(S) URL, publishes to `GitHub` Releases via `gh` CLI.
 
 use anyhow::{Context, Result};
 use std::fs::{self, File};
@@ -14,7 +14,7 @@ const HTTP_RECV_BODY_TIMEOUT_SECS: u64 = 60;
 /// HTTP connect timeout
 const HTTP_CONNECT_TIMEOUT_SECS: u64 = 10;
 
-/// GitHub domain patterns for authentication.
+/// `GitHub` domain patterns for authentication.
 const GITHUB_DOMAINS: [&str; 2] = ["github.com", "githubusercontent.com"];
 
 /// Download a file from any HTTP(S) URL.
@@ -44,7 +44,7 @@ pub fn download_and_extract(url: &str, output_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Download from URL, handling GitHub authentication.
+/// Download from URL, handling `GitHub` authentication.
 fn download_from_url(url: &str) -> Result<ureq::Body> {
     let config = ureq::Agent::config_builder()
         .timeout_recv_body(Some(Duration::from_secs(HTTP_RECV_BODY_TIMEOUT_SECS)))
@@ -65,12 +65,12 @@ fn download_from_url(url: &str) -> Result<ureq::Body> {
         .into_body())
 }
 
-/// Check if URL is a GitHub domain.
+/// Check if URL is a `GitHub` domain.
 fn is_github_url(url: &str) -> bool {
     GITHUB_DOMAINS.iter().any(|domain| url.contains(domain))
 }
 
-/// Publish a component to GitHub Releases.
+/// Publish a component to `GitHub` Releases.
 pub fn publish_github(
     asset_path: &Path,
     repo: &str,
@@ -102,7 +102,7 @@ pub fn publish_github(
     Ok(format!("https://github.com/{repo}/releases/tag/{tag}"))
 }
 
-/// Upload an asset to an existing GitHub release.
+/// Upload an asset to an existing `GitHub` release.
 pub fn upload_asset(repo: &str, tag: &str, asset_path: &Path) -> Result<()> {
     check_gh_auth()?;
 
@@ -134,7 +134,7 @@ fn check_gh_auth() -> Result<()> {
         .ok_or_else(|| anyhow::anyhow!("Not authenticated with GitHub. Run: gh auth login"))
 }
 
-/// Get GitHub token from gh CLI or `GITHUB_TOKEN` env var.
+/// Get `GitHub` token from gh CLI or `GITHUB_TOKEN` env var.
 fn get_github_token() -> Option<String> {
     Command::new("gh")
         .args(["auth", "token"])

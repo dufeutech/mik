@@ -103,6 +103,7 @@ pub struct PerformanceMetrics {
 
 impl PerformanceMetrics {
     /// Calculate percentile from latency samples.
+    #[must_use]
     pub fn percentile(&self, p: f64) -> u64 {
         if self.latencies_ms.is_empty() {
             return 0;
@@ -114,26 +115,31 @@ impl PerformanceMetrics {
     }
 
     /// P50 latency (median).
+    #[must_use]
     pub fn p50(&self) -> u64 {
         self.percentile(50.0)
     }
 
     /// P95 latency.
+    #[must_use]
     pub fn p95(&self) -> u64 {
         self.percentile(95.0)
     }
 
     /// P99 latency.
+    #[must_use]
     pub fn p99(&self) -> u64 {
         self.percentile(99.0)
     }
 
     /// P99.9 latency (tail latency).
+    #[must_use]
     pub fn p999(&self) -> u64 {
         self.percentile(99.9)
     }
 
     /// Average latency.
+    #[must_use]
     pub fn avg(&self) -> f64 {
         if self.latencies_ms.is_empty() {
             return 0.0;
@@ -142,16 +148,19 @@ impl PerformanceMetrics {
     }
 
     /// Minimum latency.
+    #[must_use]
     pub fn min(&self) -> u64 {
         self.latencies_ms.iter().copied().min().unwrap_or(0)
     }
 
     /// Maximum latency.
+    #[must_use]
     pub fn max(&self) -> u64 {
         self.latencies_ms.iter().copied().max().unwrap_or(0)
     }
 
     /// Throughput in requests per second.
+    #[must_use]
     pub fn throughput(&self) -> f64 {
         if self.duration.as_secs_f64() < 0.001 {
             return 0.0;
@@ -160,6 +169,7 @@ impl PerformanceMetrics {
     }
 
     /// Success rate as percentage.
+    #[must_use]
     pub fn success_rate(&self) -> f64 {
         if self.requests_total == 0 {
             return 0.0;
@@ -168,6 +178,7 @@ impl PerformanceMetrics {
     }
 
     /// Standard deviation of latencies.
+    #[must_use]
     pub fn std_dev(&self) -> f64 {
         if self.latencies_ms.len() < 2 {
             return 0.0;
@@ -208,6 +219,7 @@ impl PerformanceMetrics {
     }
 
     /// Check against thresholds.
+    #[must_use]
     pub fn check_thresholds(&self) -> Vec<String> {
         let mut violations = Vec::new();
 
@@ -270,6 +282,7 @@ pub struct LatencyHistogram {
 }
 
 impl LatencyHistogram {
+    #[must_use]
     pub fn new() -> Self {
         // Buckets: 1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, +inf
         let bounds = vec![1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, u64::MAX];

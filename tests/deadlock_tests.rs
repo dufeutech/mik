@@ -665,8 +665,8 @@ mod tests {
         let completed = 0;
         let duration = Duration::from_secs(30);
 
-        let completion_rate = completed as f64 / expected_ops as f64;
-        let ops_per_sec = completed as f64 / duration.as_secs_f64();
+        let completion_rate = f64::from(completed) / f64::from(expected_ops);
+        let ops_per_sec = f64::from(completed) / duration.as_secs_f64();
 
         println!(
             "Completion: {:.1}%, Throughput: {:.1} ops/s",
@@ -686,7 +686,7 @@ mod tests {
         let completed = 10; // Only 5% completed
         let duration = Duration::from_secs(30);
 
-        let completion_rate = completed as f64 / expected_ops as f64;
+        let completion_rate = f64::from(completed) / f64::from(expected_ops);
         let expected_completion_rate = 0.9; // We expect 90%+
 
         let is_partial_deadlock =
@@ -711,12 +711,12 @@ mod tests {
         // Case 1: Slow but progressing
         let slow_ops_completed = 50;
         let slow_duration = Duration::from_secs(30);
-        let slow_rate = slow_ops_completed as f64 / slow_duration.as_secs_f64();
+        let slow_rate = f64::from(slow_ops_completed) / slow_duration.as_secs_f64();
 
         // Case 2: Stuck (no progress)
         let stuck_ops_completed = 0;
         let stuck_duration = Duration::from_secs(30);
-        let stuck_rate = stuck_ops_completed as f64 / stuck_duration.as_secs_f64();
+        let stuck_rate = f64::from(stuck_ops_completed) / stuck_duration.as_secs_f64();
 
         println!("Slow rate: {:.1} ops/s", slow_rate);
         println!("Stuck rate: {:.1} ops/s", stuck_rate);
@@ -754,8 +754,8 @@ mod tests {
         let fast_expected = 50;
         let slow_expected = 50;
 
-        let fast_rate = fast_completed as f64 / fast_expected as f64;
-        let slow_rate = slow_completed as f64 / slow_expected as f64;
+        let fast_rate = f64::from(fast_completed) / f64::from(fast_expected);
+        let slow_rate = f64::from(slow_completed) / f64::from(slow_expected);
 
         println!("Fast completion: {:.1}%", fast_rate * 100.0);
         println!("Slow completion: {:.1}%", slow_rate * 100.0);

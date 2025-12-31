@@ -166,7 +166,7 @@ mod property_tests {
 
     /// Strategy for generating duration in seconds.
     ///
-    /// chrono::Duration::seconds() has a limit of approximately 2^53 nanoseconds
+    /// `chrono::Duration::seconds()` has a limit of approximately 2^53 nanoseconds
     /// which is around 10 million years. We use a safer upper bound.
     fn seconds() -> impl Strategy<Value = i64> {
         // chrono::Duration has a max of about 292 billion years in nanoseconds

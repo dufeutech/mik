@@ -512,7 +512,7 @@ mod tests {
     fn test_timeout_rate_calculation() {
         let total = 100;
         let timed_out = 5;
-        let rate = timed_out as f64 / total as f64;
+        let rate = f64::from(timed_out) / f64::from(total);
 
         assert!((rate - 0.05).abs() < 0.001, "Rate should be 5%");
         assert!(rate < 0.1, "Rate should be under 10% threshold");
@@ -527,7 +527,7 @@ mod tests {
         let first = fd_counts.first().unwrap();
         let last = fd_counts.last().unwrap();
         let growth = last - first;
-        let growth_per_cycle = growth as f64 / (fd_counts.len() - 1) as f64;
+        let growth_per_cycle = f64::from(growth) / (fd_counts.len() - 1) as f64;
 
         println!(
             "FD growth: {} total, {:.1} per cycle",
@@ -545,7 +545,7 @@ mod tests {
         // Clear leak pattern
         let leak_counts = vec![100, 150, 200, 250, 300, 350, 400, 450, 500, 550];
         let leak_growth =
-            (*leak_counts.last().unwrap() - *leak_counts.first().unwrap()) as f64 / 9.0;
+            f64::from(*leak_counts.last().unwrap() - *leak_counts.first().unwrap()) / 9.0;
         assert!(
             leak_growth > 5.0,
             "This should be flagged as leak: {:.1}/cycle",
@@ -606,7 +606,7 @@ mod tests {
         );
 
         // Most operations should be fast
-        let fast_ratio = buckets[0] as f64 / timings_ms.len() as f64;
+        let fast_ratio = f64::from(buckets[0]) / timings_ms.len() as f64;
         assert!(fast_ratio >= 0.5, "At least 50% should be <50ms");
     }
 
@@ -622,7 +622,7 @@ mod tests {
         let parallel_ms = op_time_ms;
 
         // Speedup
-        let speedup = sequential_ms as f64 / parallel_ms as f64;
+        let speedup = f64::from(sequential_ms) / f64::from(parallel_ms);
 
         println!(
             "Sequential: {}ms, Parallel: {}ms, Speedup: {:.1}x",

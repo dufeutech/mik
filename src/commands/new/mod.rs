@@ -2,7 +2,7 @@
 //!
 //! Scaffolds projects for multiple languages:
 //! - Rust (default): mik-sdk based HTTP handlers
-//! - TypeScript: jco + esbuild workflow
+//! - `TypeScript`: jco + esbuild workflow
 
 mod github;
 mod interactive;
@@ -26,7 +26,7 @@ pub struct NewOptions {
     pub template: Template,
     /// Skip interactive prompts
     pub yes: bool,
-    /// GitHub template (overrides lang/template)
+    /// `GitHub` template (overrides lang/template)
     pub github_template: Option<String>,
 }
 
@@ -82,8 +82,8 @@ pub fn execute(options: NewOptions) -> Result<()> {
     let ctx = templates::TemplateContext {
         project_name: project_name.to_string(),
         project_name_underscore: project_name.replace('-', "_"),
-        author_name: git_name.clone(),
-        author_email: git_email.clone(),
+        author_name: git_name,
+        author_email: git_email,
         year: chrono::Utc::now().format("%Y").to_string(),
         version: templates::DEFAULT_VERSION.to_string(),
     };

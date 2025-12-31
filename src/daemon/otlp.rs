@@ -2,10 +2,10 @@
 #![allow(clippy::trivially_copy_pass_by_ref)]
 #![allow(clippy::needless_pass_by_value)]
 
-//! OpenTelemetry OTLP export configuration (Phase 3).
+//! `OpenTelemetry` OTLP export configuration (Phase 3).
 //!
-//! This module provides OTLP (OpenTelemetry Protocol) trace export
-//! for distributed tracing with backends like Jaeger, Tempo, or Zipkin.
+//! This module provides OTLP (`OpenTelemetry` Protocol) trace export
+//! for distributed tracing with backends like `Jaeger`, `Tempo`, or `Zipkin`.
 //!
 //! # Feature Flag
 //!
@@ -41,7 +41,7 @@ static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 /// OTLP exporter configuration.
 #[derive(Debug, Clone)]
 pub struct OtlpConfig {
-    /// OTLP endpoint (default: http://localhost:4317)
+    /// OTLP endpoint (default: `http://localhost:4317`)
     pub endpoint: String,
     /// Service name for traces (default: mik)
     pub service_name: String,
@@ -93,7 +93,7 @@ impl std::fmt::Display for OtlpError {
 
 impl std::error::Error for OtlpError {}
 
-/// Initialize the OpenTelemetry tracer provider.
+/// Initialize the `OpenTelemetry` tracer provider.
 fn init_tracer_provider(config: &OtlpConfig) -> Result<SdkTracerProvider, OtlpError> {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_tonic()

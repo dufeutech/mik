@@ -74,9 +74,9 @@ pub fn register_lb_metrics() {
 pub struct LbMetrics;
 
 impl LbMetrics {
-    /// Create a new LbMetrics instance.
+    /// Create a new `LbMetrics` instance.
     ///
-    /// This also ensures that metric descriptions are registered.
+    /// This also ensures that metric descriptions are registered with `register_lb_metrics()`.
     pub fn new() -> Self {
         register_lb_metrics();
         Self
@@ -160,7 +160,7 @@ impl LbMetrics {
     ///
     /// # Arguments
     ///
-    /// * `backends` - Iterator of (address, is_healthy, active_connections) tuples
+    /// * `backends` - Iterator of (`address`, `is_healthy`, `active_connections`) tuples
     pub fn update_backend_metrics<'a>(&self, backends: impl Iterator<Item = (&'a str, bool, u64)>) {
         let mut total = 0usize;
         let mut healthy = 0usize;

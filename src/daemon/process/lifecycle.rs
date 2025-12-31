@@ -66,8 +66,8 @@ pub fn spawn_instance(config: &SpawnConfig) -> Result<InstanceInfo> {
 ///
 /// On Unix systems, this function uses `pre_exec` to call `setsid()` which
 /// creates a new process group. This is safe because:
-/// - `setsid()` is async-signal-safe according to POSIX
-/// - No memory allocation or locking occurs in the pre_exec closure
+/// - `setsid()` is async-signal-safe according to `POSIX`
+/// - No memory allocation or locking occurs in the `pre_exec` closure
 /// - The closure only calls libc functions that are safe in this context
 #[allow(unsafe_code)] // SAFETY: Unix pre_exec/setsid for process group detachment
 pub fn spawn_instance_with_rotation(

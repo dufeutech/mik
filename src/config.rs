@@ -668,7 +668,7 @@ mod property_tests {
         })
     }
 
-    /// Strategy for generating valid RouteConfig structs.
+    /// Strategy for generating valid `RouteConfig` structs.
     fn valid_route_config() -> impl Strategy<Value = RouteConfig> {
         (
             valid_package_name(),
@@ -683,7 +683,7 @@ mod property_tests {
             })
     }
 
-    /// Strategy for generating valid ServerConfig structs.
+    /// Strategy for generating valid `ServerConfig` structs.
     fn valid_server_config() -> impl Strategy<Value = ServerConfig> {
         (valid_port(), valid_cache_size()).prop_map(|(port, cache_size)| ServerConfig {
             port,

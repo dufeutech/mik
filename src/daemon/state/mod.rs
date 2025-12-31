@@ -6,13 +6,13 @@
 //! # Async Usage
 //!
 //! All database operations are blocking. When using from async contexts,
-//! use the async methods (`save_instance_async`, `get_instance_async`, etc.)
+//! use the async methods (`save_instance_async()`, `get_instance_async()`, etc.)
 //! which automatically wrap operations in `spawn_blocking` to avoid blocking
 //! the async runtime.
 //!
 //! # Module Structure
 //!
-//! - `types` - Core data structures (Instance, Status, Sidecar, ServiceType)
+//! - `types` - Core data structures (`Instance`, `Status`, `Sidecar`, `ServiceType`)
 //! - `instances` - Instance CRUD operations
 //! - `cron` - Cron job configuration storage
 //! - `history` - Job execution history storage

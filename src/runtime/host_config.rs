@@ -89,7 +89,7 @@ pub struct HostConfig {
     pub hot_reload: bool,
     /// Maximum AOT cache size in MB (0 = default 1GB).
     pub aot_cache_max_mb: usize,
-    /// Fuel budget per request (None = use DEFAULT_FUEL_BUDGET).
+    /// Fuel budget per request (None = use `DEFAULT_FUEL_BUDGET`).
     /// Fuel provides deterministic CPU limiting complementing epoch-based preemption.
     pub fuel_budget: Option<u64>,
 }

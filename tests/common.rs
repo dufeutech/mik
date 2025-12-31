@@ -101,6 +101,7 @@ impl Default for TestHostBuilder {
 
 impl TestHostBuilder {
     /// Create a new test host builder with default settings.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -109,6 +110,7 @@ impl TestHostBuilder {
     ///
     /// If not set, tests requiring WASM modules will fail.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_modules_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.modules_dir = Some(path.into());
         self
@@ -116,6 +118,7 @@ impl TestHostBuilder {
 
     /// Set the static files directory.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_static_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.static_dir = Some(path.into());
         self
@@ -123,6 +126,7 @@ impl TestHostBuilder {
 
     /// Set the scripts directory.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_scripts_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.scripts_dir = Some(path.into());
         self
@@ -130,6 +134,7 @@ impl TestHostBuilder {
 
     /// Set the execution timeout in seconds.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_execution_timeout(mut self, secs: u64) -> Self {
         self.execution_timeout_secs = secs;
         self
@@ -137,6 +142,7 @@ impl TestHostBuilder {
 
     /// Set the maximum body size in MB.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_max_body_size_mb(mut self, mb: usize) -> Self {
         self.max_body_size_mb = mb;
         self
@@ -232,22 +238,26 @@ impl TestHostBuilder {
 
 impl TestHost {
     /// Create a new builder for configuring a test host.
+    #[must_use]
     pub fn builder() -> TestHostBuilder {
         TestHostBuilder::new()
     }
 
     /// Get the address the server is listening on.
     #[allow(dead_code)]
+    #[must_use]
     pub fn addr(&self) -> SocketAddr {
         self.addr
     }
 
     /// Get the base URL for the server.
+    #[must_use]
     pub fn base_url(&self) -> String {
         format!("http://{}", self.addr)
     }
 
     /// Build a URL for the given path.
+    #[must_use]
     pub fn url(&self, path: &str) -> String {
         let path = if path.starts_with('/') {
             path.to_string()
@@ -259,6 +269,7 @@ impl TestHost {
 
     /// Get a reference to the HTTP client.
     #[allow(dead_code)]
+    #[must_use]
     pub fn client(&self) -> &reqwest::Client {
         &self.client
     }
@@ -843,11 +854,13 @@ impl Default for RealTestHostBuilder {
 
 impl RealTestHostBuilder {
     /// Create a new builder with default settings.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set the modules directory containing .wasm files.
+    #[must_use]
     pub fn with_modules_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.modules_dir = path.into();
         self
@@ -855,6 +868,7 @@ impl RealTestHostBuilder {
 
     /// Set the static files directory.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_static_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.static_dir = Some(path.into());
         self
@@ -862,6 +876,7 @@ impl RealTestHostBuilder {
 
     /// Set the scripts directory for JS orchestration.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_scripts_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.scripts_dir = Some(path.into());
         self
@@ -869,6 +884,7 @@ impl RealTestHostBuilder {
 
     /// Set the execution timeout in seconds.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_execution_timeout(mut self, secs: u64) -> Self {
         self.execution_timeout_secs = secs;
         self
@@ -876,6 +892,7 @@ impl RealTestHostBuilder {
 
     /// Set the memory limit per request in MB.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_memory_limit_mb(mut self, mb: usize) -> Self {
         self.memory_limit_mb = mb;
         self
@@ -883,6 +900,7 @@ impl RealTestHostBuilder {
 
     /// Set the maximum concurrent requests.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_max_concurrent_requests(mut self, max: usize) -> Self {
         self.max_concurrent_requests = max;
         self
@@ -890,6 +908,7 @@ impl RealTestHostBuilder {
 
     /// Set the module cache size.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_cache_size(mut self, size: usize) -> Self {
         self.cache_size = size;
         self
@@ -897,6 +916,7 @@ impl RealTestHostBuilder {
 
     /// Set the maximum body size in MB.
     #[allow(dead_code)]
+    #[must_use]
     pub fn with_max_body_size_mb(mut self, mb: usize) -> Self {
         self.max_body_size_mb = mb;
         self
@@ -1008,23 +1028,27 @@ impl RealTestHostBuilder {
 
 impl RealTestHost {
     /// Create a new builder for configuring a real test host.
+    #[must_use]
     pub fn builder() -> RealTestHostBuilder {
         RealTestHostBuilder::new()
     }
 
     /// Get the address the server is listening on.
     #[allow(dead_code)]
+    #[must_use]
     pub fn addr(&self) -> SocketAddr {
         self.addr
     }
 
     /// Get the base URL for the server.
     #[allow(dead_code)]
+    #[must_use]
     pub fn base_url(&self) -> String {
         format!("http://{}", self.addr)
     }
 
     /// Build a URL for the given path.
+    #[must_use]
     pub fn url(&self, path: &str) -> String {
         let path = if path.starts_with('/') {
             path.to_string()
@@ -1036,6 +1060,7 @@ impl RealTestHost {
 
     /// Get a reference to the HTTP client.
     #[allow(dead_code)]
+    #[must_use]
     pub fn client(&self) -> &reqwest::Client {
         &self.client
     }

@@ -1,4 +1,4 @@
-//! Async wrappers for KvStore operations.
+//! Async wrappers for `KvStore` operations.
 //!
 //! These methods wrap the synchronous operations in `spawn_blocking` to
 //! avoid blocking the async runtime. Use these when calling from async

@@ -285,24 +285,24 @@ impl LoadBalancer {
         self.backends.read().await.len()
     }
 
-    /// Get the shared backends reference for use with ReloadManager.
+    /// Get the shared backends reference for use with `ReloadManager`.
     ///
-    /// This allows creating a ReloadManager that can dynamically update
+    /// This allows creating a `ReloadManager` that can dynamically update
     /// the backend list without restarting the load balancer.
     #[allow(dead_code)]
     pub fn backends(&self) -> Arc<RwLock<Vec<Backend>>> {
         self.backends.clone()
     }
 
-    /// Get the shared selection reference for use with ReloadManager.
+    /// Get the shared selection reference for use with `ReloadManager`.
     #[allow(dead_code)]
     pub fn selection(&self) -> Arc<RwLock<RoundRobin>> {
         self.selection.clone()
     }
 
-    /// Create a ReloadManager for this load balancer.
+    /// Create a `ReloadManager` for this load balancer.
     ///
-    /// The ReloadManager allows dynamically updating the backend list
+    /// The `ReloadManager` allows dynamically updating the backend list
     /// with graceful draining of removed backends.
     ///
     /// # Example
@@ -335,7 +335,7 @@ impl LoadBalancer {
 
     /// Update the backend list atomically.
     ///
-    /// This is a simpler alternative to using ReloadManager when you
+    /// This is a simpler alternative to using `ReloadManager` when you
     /// don't need graceful draining. New backends are added immediately
     /// and removed backends are removed immediately.
     ///

@@ -296,13 +296,13 @@ fn bench_script_execution(c: &mut Criterion) {
                 .unwrap();
         });
 
-        let script = r#"
+        let script = r"
             var output = {
                 doubled: input.value * 2,
                 greeting: 'Hello, ' + input.name
             };
             JSON.stringify(output);
-        "#;
+        ";
 
         b.iter(|| {
             context.with(|ctx| {
@@ -319,12 +319,12 @@ fn bench_script_execution(c: &mut Criterion) {
 
         // Set up a mock function
         context.with(|ctx| {
-            ctx.eval::<(), _>(r#"
+            ctx.eval::<(), _>(r"
                 var input = {items: [1, 2, 3, 4, 5]};
                 function processItems(items) {
                     return items.map(function(x) { return x * 2; }).reduce(function(a, b) { return a + b; }, 0);
                 }
-            "#).unwrap();
+            ").unwrap();
         });
 
         let script = "processItems(input.items);";
@@ -339,7 +339,7 @@ fn bench_script_execution(c: &mut Criterion) {
 
     // Benchmark script preprocessing (export default transformation)
     group.bench_function("script_preprocess", |b| {
-        let script = r#"
+        let script = r"
             export default function(input) {
                 var result = {};
                 result.sum = input.items.reduce(function(a, b) { return a + b; }, 0);
@@ -347,7 +347,7 @@ fn bench_script_execution(c: &mut Criterion) {
                 result.avg = result.sum / result.count;
                 return result;
             }
-        "#;
+        ";
 
         b.iter(|| {
             let processed = script

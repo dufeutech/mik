@@ -1,7 +1,7 @@
 //! W3C Trace Context (Phase 3) - Standard distributed tracing headers.
 //!
 //! Implements [W3C Trace Context](https://www.w3.org/TR/trace-context/) for
-//! interoperability with OpenTelemetry, Jaeger, Zipkin, and other tracing systems.
+//! interoperability with `OpenTelemetry`, `Jaeger`, `Zipkin`, and other tracing systems.
 //!
 //! # Header Format
 //!

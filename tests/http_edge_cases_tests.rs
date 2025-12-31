@@ -375,7 +375,7 @@ async fn test_keep_alive_connection_reuse() {
     }
 
     let elapsed = start.elapsed();
-    let avg_latency = elapsed.as_millis() as f64 / requests as f64;
+    let avg_latency = elapsed.as_millis() as f64 / f64::from(requests);
 
     println!(
         "Completed {} requests in {:.2}s",

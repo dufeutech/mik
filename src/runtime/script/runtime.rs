@@ -1,4 +1,4 @@
-//! JavaScript runtime setup and execution.
+//! `JavaScript` runtime setup and execution.
 //!
 //! Handles rquickjs Runtime/Context creation and script execution.
 
@@ -11,7 +11,7 @@ use super::context::{js_to_json, preprocess_script};
 /// Maximum iterations to wait for async Promise resolution.
 const MAX_ASYNC_ITERATIONS: usize = 10000;
 
-/// Run JavaScript with `host.call()` capability (blocking).
+/// Run `JavaScript` with `host.call()` capability (blocking).
 pub(crate) fn run_js_script(
     script: &str,
     input: &serde_json::Value,

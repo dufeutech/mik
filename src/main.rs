@@ -192,12 +192,12 @@ enum Commands {
     /// Create a new mik project
     ///
     /// Scaffolds a project from templates supporting multiple languages:
-    /// Rust (default) and TypeScript.
+    /// Rust (default) and `TypeScript`.
     ///
     /// Examples:
     ///   mik new my-service                    # Interactive mode
     ///   mik new my-service -y                 # Use defaults (Rust + basic)
-    ///   mik new my-service --lang typescript  # TypeScript project
+    ///   mik new my-service --lang typescript  # `TypeScript` project
     ///   mik new my-api --lang rust --template rest-api
     ///   mik new my-service --template github:user/repo
     New {
@@ -264,15 +264,15 @@ enum Commands {
     },
     /// Build the component with cargo-component
     ///
-    /// Compiles to WASM component targeting wasm32-wasip2.
-    /// Supports multiple languages: Rust (default) and TypeScript.
+    /// Compiles to WASM component targeting `wasm32-wasip2`.
+    /// Supports multiple languages: Rust (default) and `TypeScript`.
     /// Optionally composes all dependencies using WAC.
     ///
     /// Examples:
     ///   mik build                   # Build (language from mik.toml or Rust)
     ///   mik build --release         # Optimized build
     ///   mik build -rc               # Release + compose dependencies
-    ///   mik build --lang ts         # Build TypeScript project
+    ///   mik build --lang ts         # Build `TypeScript` project
     Build {
         /// Build in release mode
         #[arg(short, long)]
@@ -300,13 +300,13 @@ enum Commands {
 
         /// Number of worker processes for horizontal scaling.
         /// Use 0 for auto-detect (one worker per CPU core).
-        /// Each worker runs on a separate port (base_port+1, base_port+2, ...).
+        /// Each worker runs on a separate port (`base_port`+1, `base_port`+2, ...).
         /// Use with --lb for integrated load balancer or nginx/caddy/haproxy.
         #[arg(short, long, default_value = "1")]
         workers: u16,
 
-        /// Base port for the load balancer (default: from mik.toml or 3000).
-        /// Workers run on ports base_port+1, base_port+2, etc.
+        /// Base port for the load balancer (default: from `mik.toml` or 3000).
+        /// Workers run on ports `base_port`+1, `base_port`+2, etc.
         #[arg(short, long)]
         port: Option<u16>,
 
@@ -316,15 +316,15 @@ enum Commands {
         local: bool,
 
         /// Enable integrated L7 load balancer for multi-worker mode.
-        /// The load balancer listens on base_port and distributes requests
+        /// The load balancer listens on `base_port` and distributes requests
         /// to workers using round-robin with health checks.
         #[arg(long)]
         lb: bool,
     },
-    /// Publish component to GitHub Container Registry (ghcr.io)
+    /// Publish component to `GitHub` Container Registry (`ghcr.io`)
     ///
     /// Builds release component and pushes to ghcr.io.
-    /// Requires GitHub authentication (gh auth login).
+    /// Requires `GitHub` authentication (gh auth login).
     ///
     /// Examples:
     ///   mik publish                  # Use version from mik.toml

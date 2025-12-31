@@ -1,4 +1,4 @@
-//! Core KvStore implementation with synchronous operations.
+//! Core `KvStore` implementation with synchronous operations.
 //!
 //! Provides the main key-value store interface backed by redb.
 

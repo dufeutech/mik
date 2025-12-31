@@ -69,7 +69,7 @@ pub fn default_lb_enabled() -> bool {
     false
 }
 
-/// Default load balancing algorithm ("round_robin").
+/// Default load balancing algorithm (`round_robin`).
 pub fn default_lb_algorithm() -> String {
     "round_robin".to_string()
 }

@@ -511,7 +511,7 @@ mod tests {
 
         for scenario in scenarios {
             let estimated_drain_time_ms =
-                scenario.active_connections as u64 * scenario.request_avg_duration_ms / 10; // Rough estimate
+                u64::from(scenario.active_connections) * scenario.request_avg_duration_ms / 10; // Rough estimate
             let timeout_ms = scenario.timeout_secs * 1000;
 
             let would_be_graceful =

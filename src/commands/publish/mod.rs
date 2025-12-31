@@ -1,4 +1,4 @@
-//! Publish component to GitHub Releases.
+//! Publish component to `GitHub` Releases.
 //!
 //! Creates a tar.gz archive with wasm, wit/, static/, and mik.toml.
 
@@ -19,7 +19,7 @@ use archive::create_archive;
 use discovery::{find_component, find_static_dir, find_wit_dir};
 use errors::{handle_publish_error, handle_upload_error};
 
-/// Publish component to GitHub Releases.
+/// Publish component to `GitHub` Releases.
 pub fn execute(tag: Option<&str>, dry_run: bool) -> Result<()> {
     let manifest = Manifest::load().context("No mik.toml found. Run 'mik init' first.")?;
     let name = &manifest.project.name;

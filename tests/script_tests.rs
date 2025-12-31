@@ -775,7 +775,7 @@ async fn test_script_returns_primitive_types() {
 async fn test_script_returns_number() {
     let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
 
-    let script_content = r#"export default function(input) { return 42; }"#;
+    let script_content = r"export default function(input) { return 42; }";
     let script_path = temp_dir.path().join("return_number.js");
     std::fs::write(&script_path, script_content).expect("Failed to write script");
 
@@ -799,7 +799,7 @@ async fn test_script_returns_number() {
 async fn test_script_returns_boolean() {
     let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
 
-    let script_content = r#"export default function(input) { return true; }"#;
+    let script_content = r"export default function(input) { return true; }";
     let script_path = temp_dir.path().join("return_bool.js");
     std::fs::write(&script_path, script_content).expect("Failed to write script");
 
@@ -823,7 +823,7 @@ async fn test_script_returns_boolean() {
 async fn test_script_returns_null() {
     let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
 
-    let script_content = r#"export default function(input) { return null; }"#;
+    let script_content = r"export default function(input) { return null; }";
     let script_path = temp_dir.path().join("return_null.js");
     std::fs::write(&script_path, script_content).expect("Failed to write script");
 
@@ -1214,13 +1214,13 @@ async fn test_script_isolation_between_requests() {
 
     // Script that uses a variable to verify fresh context each time
     // We use a simple pattern that works without relying on implicit globals
-    let script_content = r#"
+    let script_content = r"
 export default function(input) {
     // Each fresh context starts with a new local scope
     var localCounter = 1;
     return { counter: localCounter, requestId: input.id };
 }
-"#;
+";
 
     let script_path = temp_dir.path().join("isolation_test.js");
     std::fs::write(&script_path, script_content).expect("Failed to write script");

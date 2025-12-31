@@ -163,7 +163,7 @@ impl Error {
 }
 
 impl Error {
-    /// Convert to anyhow::Error for gradual migration.
+    /// Convert to `anyhow::Error` for gradual migration.
     pub fn into_anyhow(self) -> anyhow::Error {
         anyhow::Error::from(self)
     }

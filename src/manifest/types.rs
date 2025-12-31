@@ -266,16 +266,16 @@ pub struct LbConfig {
     /// Enable load balancing (default: false).
     #[serde(default = "default_lb_enabled")]
     pub enabled: bool,
-    /// Load balancing algorithm (default: "round_robin").
+    /// Load balancing algorithm (default: `round_robin`).
     ///
-    /// Options: "round_robin", "weighted", "consistent_hash"
+    /// Options: `round_robin`, `weighted`, `consistent_hash`
     #[serde(default = "default_lb_algorithm")]
     pub algorithm: String,
-    /// Type of health check to perform (default: "http").
+    /// Type of health check to perform (default: `http`).
     ///
     /// Options:
-    /// - "http" - HTTP GET request to health_check_path, expects 2xx response
-    /// - "tcp" - TCP connection check, just verifies port is accepting connections
+    /// - `http` - HTTP GET request to `health_check_path`, expects 2xx response
+    /// - `tcp` - TCP connection check, just verifies port is accepting connections
     #[serde(default = "default_health_check_type")]
     pub health_check_type: String,
     /// Interval between health checks in milliseconds (default: 5000).
@@ -284,8 +284,8 @@ pub struct LbConfig {
     /// Timeout for each health check request in milliseconds (default: 2000).
     #[serde(default = "default_health_check_timeout_ms")]
     pub health_check_timeout_ms: u64,
-    /// Path to check for HTTP health checks (default: "/health").
-    /// Only used when health_check_type = "http".
+    /// Path to check for HTTP health checks (default: `/health`).
+    /// Only used when `health_check_type` = `http`.
     #[serde(default = "default_health_check_path")]
     pub health_check_path: String,
     /// Number of consecutive failures before marking backend unhealthy (default: 3).

@@ -76,7 +76,7 @@ pub const METRICS_PATH: &str = "/metrics";
 pub use constants::DEFAULT_CACHE_SIZE;
 pub use constants::DEFAULT_MAX_CONCURRENT_REQUESTS;
 
-/// Default timeout for WASM execution (uses constants::MAX_WASM_TIMEOUT_SECS).
+/// Default timeout for WASM execution (uses `constants::MAX_WASM_TIMEOUT_SECS`).
 pub const DEFAULT_EXECUTION_TIMEOUT_SECS: u64 = constants::MAX_WASM_TIMEOUT_SECS;
 
 /// Default max cache memory in MB.
@@ -830,7 +830,7 @@ mod tests {
     /// Test that the epoch thread stops when Host is dropped.
     ///
     /// This test creates a Host with a minimal configuration, then drops it
-    /// and verifies that the epoch_shutdown flag was set. The actual thread
+    /// and verifies that the `epoch_shutdown` flag was set. The actual thread
     /// termination happens asynchronously, but we verify the signal is sent.
     #[test]
     fn test_epoch_thread_shutdown_on_drop() {

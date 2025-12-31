@@ -56,7 +56,7 @@ impl ModuleWatcher {
 
         let modules_dir = modules_dir.to_path_buf();
         let config_path = config_path.to_path_buf();
-        let sender = tx.clone();
+        let sender = tx;
 
         // Clone paths for the closure
         let modules_dir_closure = modules_dir.clone();

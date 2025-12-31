@@ -220,7 +220,7 @@ pub(crate) fn validate_content_length(
     }
 }
 
-/// Parses the module route from a run path, returning (module_name, handler_path).
+/// Parses the module route from a run path, returning (`module_name`, `handler_path`).
 pub(crate) fn parse_module_route(run_path: &str) -> (String, String) {
     if run_path.is_empty() {
         (String::new(), "/".to_string())
@@ -561,7 +561,7 @@ pub(crate) fn not_found(message: &str) -> Result<Response<Full<Bytes>>> {
 
 /// Create an error response from a typed runtime error.
 ///
-/// Uses the error's status_code() method for the HTTP status and
+/// Uses the error's `status_code()` method for the HTTP status and
 /// provides a JSON error body.
 pub(crate) fn error_response(err: &Error) -> Result<Response<Full<Bytes>>> {
     let status = err.status_code();

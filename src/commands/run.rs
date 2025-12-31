@@ -38,7 +38,7 @@ use crate::runtime::lb::{LoadBalancer, LoadBalancerConfig};
 ///   - Use with nginx/caddy/haproxy for L7 load balancing
 ///
 /// - `mik run --workers 4 --lb` - Multi-worker mode (integrated LB)
-///   - LB on base_port, workers on base_port+1 to base_port+workers
+///   - LB on `base_port`, workers on `base_port`+1 to `base_port`+workers
 ///   - Round-robin with health checks
 ///
 /// - `mik run --workers 0` - Auto-detect workers (one per CPU core)

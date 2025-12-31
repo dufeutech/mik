@@ -57,7 +57,7 @@ pub struct Backend {
     /// Default is 1. A backend with weight 2 receives 2x traffic vs weight 1.
     weight: u32,
     /// Maximum concurrent connections allowed for this backend.
-    /// When active_requests >= max_connections, the backend is at capacity.
+    /// When `active_requests` >= `max_connections`, the backend is at capacity.
     max_connections: u32,
     /// Whether the backend is currently healthy.
     healthy: AtomicBool,
@@ -100,7 +100,7 @@ impl Backend {
     /// A backend with weight 2 will receive twice as much traffic as one with weight 1.
     /// Weight of 0 is treated as 1 (minimum weight).
     ///
-    /// max_connections limits the number of concurrent connections to this backend.
+    /// `max_connections` limits the number of concurrent connections to this backend.
     /// When the limit is reached, the backend is considered at capacity and will
     /// not be selected for new requests until active connections decrease.
     pub fn with_options(address: String, weight: u32, max_connections: u32) -> Self {
@@ -182,7 +182,7 @@ impl Backend {
 
     /// Check if the backend has capacity for more connections.
     ///
-    /// Returns true if active_requests < max_connections, meaning
+    /// Returns true if `active_requests` < `max_connections`, meaning
     /// the backend can accept new requests.
     pub fn has_capacity(&self) -> bool {
         self.active_requests.load(Ordering::Acquire) < u64::from(self.max_connections)

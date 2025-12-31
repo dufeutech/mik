@@ -1,7 +1,7 @@
 //! Script preprocessing and JavaScript-JSON conversion.
 //!
 //! Handles transforming user scripts to executable form and converting
-//! JavaScript values to/from JSON.
+//! `JavaScript` values to/from JSON.
 
 use rquickjs::{FromJs, Object, Value as JsValue};
 
@@ -53,7 +53,7 @@ pub(crate) fn preprocess_script(script: &str) -> String {
     }
 }
 
-/// Convert a JavaScript value to a JSON value.
+/// Convert a `JavaScript` value to a JSON value.
 ///
 /// # Note on `needless_pass_by_value`
 /// rquickjs `JsValue` must be passed by value because the conversion process may

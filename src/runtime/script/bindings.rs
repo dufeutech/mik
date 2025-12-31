@@ -1,6 +1,6 @@
-//! Host bindings for JavaScript scripts.
+//! Host bindings for `JavaScript` scripts.
 //!
-//! Provides the `host.call()` bridge between synchronous JS and async Rust.
+//! Provides the `host.call()` bridge between synchronous `JavaScript` and async Rust.
 
 use std::cell::RefCell;
 use std::sync::Arc;

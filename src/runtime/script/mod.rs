@@ -154,7 +154,7 @@ pub(crate) async fn handle_script_request(
 // Script Execution
 // =============================================================================
 
-/// Execute a JavaScript script with `host.call()` capability.
+/// Execute a `JavaScript` script with `host.call()` capability.
 async fn execute_script(
     shared: Arc<SharedState>,
     script: &str,
