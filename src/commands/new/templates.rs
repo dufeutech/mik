@@ -33,7 +33,7 @@ impl std::str::FromStr for Language {
 
 impl Language {
     /// Get available templates for this language.
-    pub fn available_templates(&self) -> &[Template] {
+    pub const fn available_templates(&self) -> &[Template] {
         match self {
             Self::Rust => &[Template::Basic, Template::RestApi],
             Self::TypeScript => &[Template::Basic],
@@ -72,7 +72,7 @@ impl std::str::FromStr for Template {
 
 impl Template {
     /// Description of the template.
-    pub fn description(&self) -> &'static str {
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::Basic => "Simple hello world handler",
             Self::RestApi => "CRUD REST API with typed inputs",

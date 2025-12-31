@@ -229,7 +229,7 @@ fn remove_stale_modules(expected: &HashSet<String>) {
 }
 
 /// Check if dependency is a local path reference.
-fn is_local_path_dependency(dep: &Dependency) -> bool {
+const fn is_local_path_dependency(dep: &Dependency) -> bool {
     matches!(dep, Dependency::Detailed(d) if d.path.is_some())
 }
 
@@ -245,15 +245,20 @@ enum GitRef {
 impl GitRef {
     /// Extract git ref from dependency detail.
     fn from_detail(detail: &crate::manifest::DependencyDetail) -> Self {
-        if let Some(branch) = &detail.branch {
-            Self::Branch(branch.clone())
-        } else if let Some(tag) = &detail.tag {
-            Self::Tag(tag.clone())
-        } else if let Some(rev) = &detail.rev {
-            Self::Rev(rev.clone())
-        } else {
-            Self::Default
-        }
+        detail.branch.as_ref().map_or_else(
+            || {
+                detail.tag.as_ref().map_or_else(
+                    || {
+                        detail
+                            .rev
+                            .as_ref()
+                            .map_or(Self::Default, |rev| Self::Rev(rev.clone()))
+                    },
+                    |tag| Self::Tag(tag.clone()),
+                )
+            },
+            |branch| Self::Branch(branch.clone()),
+        )
     }
 }
 

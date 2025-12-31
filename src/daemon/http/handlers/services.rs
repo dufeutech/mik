@@ -21,13 +21,10 @@ fn parse_service_type(s: &str) -> ServiceType {
         "sql" => ServiceType::Sql,
         "storage" => ServiceType::Storage,
         "queue" => ServiceType::Queue,
-        other => {
-            if let Some(name) = other.strip_prefix("custom:") {
-                ServiceType::Custom(name.to_string())
-            } else {
-                ServiceType::Custom(other.to_string())
-            }
-        },
+        other => other.strip_prefix("custom:").map_or_else(
+            || ServiceType::Custom(other.to_string()),
+            |name| ServiceType::Custom(name.to_string()),
+        ),
     }
 }
 

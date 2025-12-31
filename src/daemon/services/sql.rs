@@ -120,12 +120,12 @@ impl Row {
     }
 
     /// Gets the number of columns in this row.
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.columns.len()
     }
 
     /// Returns true if the row has no columns.
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.columns.is_empty()
     }
 

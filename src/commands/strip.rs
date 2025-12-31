@@ -213,7 +213,7 @@ fn extract_tar_gz(archive: &Path, dest: &Path) -> Result<()> {
 }
 
 #[cfg(all(feature = "registry", windows))]
-fn extract_tar_gz(_archive: &Path, _dest: &Path) -> Result<()> {
+const fn extract_tar_gz(_archive: &Path, _dest: &Path) -> Result<()> {
     // Windows uses zip, not tar.gz
     Ok(())
 }
@@ -231,9 +231,8 @@ pub fn execute(input: &str, options: StripOptions) -> Result<()> {
     let wasm_tools = get_wasm_tools()?;
 
     // Determine output path
-    let output_path = match &options.output {
-        Some(out) => out.clone(),
-        None => {
+    let output_path = options.output.as_ref().map_or_else(
+        || {
             let stem = input_path
                 .file_stem()
                 .and_then(|s| s.to_str())
@@ -244,7 +243,8 @@ pub fn execute(input: &str, options: StripOptions) -> Result<()> {
                 .to_string_lossy()
                 .to_string()
         },
-    };
+        |out| out.clone(),
+    );
 
     // Build wasm-tools strip command
     let mut cmd = Command::new(&wasm_tools);

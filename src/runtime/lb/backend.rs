@@ -124,7 +124,7 @@ impl Backend {
     /// The circuit breaker will automatically open after consecutive failures
     /// and close after successful requests in the half-open state.
     #[allow(dead_code)]
-    pub fn with_circuit_breaker(address: String, config: CircuitBreakerConfig) -> Self {
+    pub const fn with_circuit_breaker(address: String, config: CircuitBreakerConfig) -> Self {
         Self {
             address,
             weight: 1,

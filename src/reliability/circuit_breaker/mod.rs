@@ -93,59 +93,50 @@ impl CircuitBreaker {
         self.states
             .entry_by_ref(&cache_key)
             .and_compute_with(|entry| {
-                match entry {
-                    Some(entry) => {
-                        let state = entry.into_value();
-                        match state {
-                            CircuitState::Closed { .. } => {
-                                // Closed - allow request, no state change
+                entry.map_or(Op::Nop, |entry| {
+                    let state = entry.into_value();
+                    match state {
+                        CircuitState::Closed { .. } => {
+                            // Closed - allow request, no state change
+                            Op::Nop
+                        },
+                        CircuitState::Open {
+                            opened_at,
+                            failure_count,
+                        } => {
+                            if opened_at.elapsed() >= timeout {
+                                // Timeout elapsed - transition to HalfOpen
+                                // This request becomes the probe
+                                info!("Circuit breaker for '{}' transitioning to half-open", key);
+                                Op::Put(CircuitState::HalfOpen {
+                                    started_at: Instant::now(),
+                                })
+                            } else {
+                                // Still within timeout - reject
+                                allowed = false;
+                                error_info = Some((failure_count, CircuitOpenReason::Open));
                                 Op::Nop
                             }
-                            CircuitState::Open {
-                                opened_at,
-                                failure_count,
-                            } => {
-                                if opened_at.elapsed() >= timeout {
-                                    // Timeout elapsed - transition to HalfOpen
-                                    // This request becomes the probe
-                                    info!(
-                                        "Circuit breaker for '{}' transitioning to half-open",
-                                        key
-                                    );
-                                    Op::Put(CircuitState::HalfOpen {
-                                        started_at: Instant::now(),
-                                    })
-                                } else {
-                                    // Still within timeout - reject
-                                    allowed = false;
-                                    error_info = Some((failure_count, CircuitOpenReason::Open));
-                                    Op::Nop
-                                }
-                            }
-                            CircuitState::HalfOpen { started_at } => {
-                                if started_at.elapsed() >= probe_timeout {
-                                    // Probe timed out - allow new probe
-                                    warn!(
+                        },
+                        CircuitState::HalfOpen { started_at } => {
+                            if started_at.elapsed() >= probe_timeout {
+                                // Probe timed out - allow new probe
+                                warn!(
                                     "Circuit breaker for '{}' probe timed out, allowing new probe",
                                     key
                                 );
-                                    Op::Put(CircuitState::HalfOpen {
-                                        started_at: Instant::now(),
-                                    })
-                                } else {
-                                    // Probe still in flight - reject
-                                    allowed = false;
-                                    error_info = Some((0, CircuitOpenReason::ProbeInFlight));
-                                    Op::Nop
-                                }
+                                Op::Put(CircuitState::HalfOpen {
+                                    started_at: Instant::now(),
+                                })
+                            } else {
+                                // Probe still in flight - reject
+                                allowed = false;
+                                error_info = Some((0, CircuitOpenReason::ProbeInFlight));
+                                Op::Nop
                             }
-                        }
+                        },
                     }
-                    None => {
-                        // Key not in cache - new circuit, default is Closed (allowed)
-                        Op::Nop
-                    }
-                }
+                })
             });
 
         if allowed {
@@ -187,38 +178,32 @@ impl CircuitBreaker {
         self.states
             .entry_by_ref(&cache_key)
             .and_compute_with(|entry| {
-                match entry {
-                    Some(entry) => {
-                        let state = entry.into_value();
-                        match state {
-                            CircuitState::Closed { failure_count: 0 } => {
-                                // Already at zero failures - no update needed
-                                Op::Nop
-                            },
-                            CircuitState::Closed { .. } => {
-                                // Reset failure count
-                                Op::Put(CircuitState::Closed { failure_count: 0 })
-                            },
-                            CircuitState::HalfOpen { .. } => {
-                                // Recovery successful - close circuit
-                                info!(
-                                    "Circuit breaker for '{}' closing after successful recovery",
-                                    key
-                                );
-                                Op::Put(CircuitState::Closed { failure_count: 0 })
-                            },
-                            CircuitState::Open { .. } => {
-                                // Unexpected - shouldn't get success in open state
-                                warn!("Unexpected success in open circuit state for '{}'", key);
-                                Op::Nop
-                            },
-                        }
-                    },
-                    None => {
-                        // No state - nothing to update
-                        Op::Nop
-                    },
-                }
+                entry.map_or(Op::Nop, |entry| {
+                    let state = entry.into_value();
+                    match state {
+                        CircuitState::Closed { failure_count: 0 } => {
+                            // Already at zero failures - no update needed
+                            Op::Nop
+                        },
+                        CircuitState::Closed { .. } => {
+                            // Reset failure count
+                            Op::Put(CircuitState::Closed { failure_count: 0 })
+                        },
+                        CircuitState::HalfOpen { .. } => {
+                            // Recovery successful - close circuit
+                            info!(
+                                "Circuit breaker for '{}' closing after successful recovery",
+                                key
+                            );
+                            Op::Put(CircuitState::Closed { failure_count: 0 })
+                        },
+                        CircuitState::Open { .. } => {
+                            // Unexpected - shouldn't get success in open state
+                            warn!("Unexpected success in open circuit state for '{}'", key);
+                            Op::Nop
+                        },
+                    }
+                })
             });
     }
 
@@ -235,8 +220,21 @@ impl CircuitBreaker {
         self.states
             .entry_by_ref(&cache_key)
             .and_compute_with(|entry| {
-                match entry {
-                    Some(entry) => {
+                entry.map_or_else(
+                    || {
+                        // New key - start counting failures
+                        // Check if threshold=1 means we should open immediately
+                        if threshold <= 1 {
+                            warn!("Circuit breaker opening for '{}' after 1 failure", key);
+                            Op::Put(CircuitState::Open {
+                                opened_at: Instant::now(),
+                                failure_count: 1,
+                            })
+                        } else {
+                            Op::Put(CircuitState::Closed { failure_count: 1 })
+                        }
+                    },
+                    |entry| {
                         let state = entry.into_value();
                         match state {
                             CircuitState::Closed { failure_count } => {
@@ -276,20 +274,7 @@ impl CircuitBreaker {
                             },
                         }
                     },
-                    None => {
-                        // New key - start counting failures
-                        // Check if threshold=1 means we should open immediately
-                        if threshold <= 1 {
-                            warn!("Circuit breaker opening for '{}' after 1 failure", key);
-                            Op::Put(CircuitState::Open {
-                                opened_at: Instant::now(),
-                                failure_count: 1,
-                            })
-                        } else {
-                            Op::Put(CircuitState::Closed { failure_count: 1 })
-                        }
-                    },
-                }
+                )
             });
     }
 

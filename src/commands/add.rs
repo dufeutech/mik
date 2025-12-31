@@ -198,22 +198,27 @@ fn extract_name_from_url(url: &str) -> Option<&str> {
 fn format_dep(dep: &Dependency) -> String {
     match dep {
         Dependency::Simple(v) => format!("version {v}"),
-        Dependency::Detailed(d) => {
-            if let Some(git) = &d.git {
-                format!("git: {git}")
-            } else if let Some(path) = &d.path {
-                format!("path: {path}")
-            } else if let Some(reg) = &d.registry {
-                let version = d
-                    .version
-                    .as_deref()
-                    .or(d.tag.as_deref())
-                    .unwrap_or("latest");
-                format!("{reg} @ {version}")
-            } else {
-                d.version.clone().unwrap_or_else(|| "latest".to_string())
-            }
-        },
+        Dependency::Detailed(d) => d.git.as_ref().map_or_else(
+            || {
+                d.path.as_ref().map_or_else(
+                    || {
+                        d.registry.as_ref().map_or_else(
+                            || d.version.clone().unwrap_or_else(|| "latest".to_string()),
+                            |reg| {
+                                let version = d
+                                    .version
+                                    .as_deref()
+                                    .or(d.tag.as_deref())
+                                    .unwrap_or("latest");
+                                format!("{reg} @ {version}")
+                            },
+                        )
+                    },
+                    |path| format!("path: {path}"),
+                )
+            },
+            |git| format!("git: {git}"),
+        ),
     }
 }
 

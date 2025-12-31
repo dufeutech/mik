@@ -693,8 +693,9 @@ fn resolve_dependency_path(name: &str, dep: &Dependency) -> String {
             // Assume it's in modules/
             format!("modules/{name}.wasm")
         },
-        Dependency::Detailed(d) => {
-            if let Some(path) = &d.path {
+        Dependency::Detailed(d) => d.path.as_ref().map_or_else(
+            || format!("modules/{name}.wasm"),
+            |path| {
                 // Local path dependency - check extension case-insensitively
                 if Path::new(path)
                     .extension()
@@ -705,11 +706,8 @@ fn resolve_dependency_path(name: &str, dep: &Dependency) -> String {
                     // It's a directory, look for built component
                     format!("{path}/target/wasm32-wasip2/release/{name}.wasm")
                 }
-            } else {
-                // Remote dependency - should be in modules/
-                format!("modules/{name}.wasm")
-            }
-        },
+            },
+        ),
     }
 }
 

@@ -26,15 +26,13 @@ fn json_to_sql_value(v: &serde_json::Value) -> SqlValue {
     match v {
         serde_json::Value::Null => SqlValue::Null,
         serde_json::Value::Bool(b) => SqlValue::Integer(i64::from(*b)),
-        serde_json::Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                SqlValue::Integer(i)
-            } else if let Some(f) = n.as_f64() {
-                SqlValue::Real(f)
-            } else {
-                SqlValue::Text(n.to_string())
-            }
-        },
+        serde_json::Value::Number(n) => n.as_i64().map_or_else(
+            || {
+                n.as_f64()
+                    .map_or_else(|| SqlValue::Text(n.to_string()), SqlValue::Real)
+            },
+            SqlValue::Integer,
+        ),
         serde_json::Value::String(s) => SqlValue::Text(s.clone()),
         _ => SqlValue::Text(v.to_string()),
     }

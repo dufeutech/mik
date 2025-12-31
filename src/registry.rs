@@ -79,10 +79,10 @@ pub fn publish_github(
 ) -> Result<String> {
     check_gh_auth()?;
 
-    let notes_args: Vec<String> = match notes {
-        Some(n) => vec!["--notes".into(), n.into()],
-        None => vec!["--generate-notes".into()],
-    };
+    let notes_args: Vec<String> = notes.map_or_else(
+        || vec!["--generate-notes".into()],
+        |n| vec!["--notes".into(), n.into()],
+    );
 
     let output = Command::new("gh")
         .args(["release", "create", tag])

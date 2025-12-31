@@ -263,10 +263,11 @@ impl ProxyService {
         }
 
         // Select using the algorithm from backends with capacity
-        match selection.select(&capacity_indices) {
-            Some(idx) => SelectBackendResult::Selected(backends[idx].clone()),
-            None => SelectBackendResult::AllAtCapacity,
-        }
+        selection
+            .select(&capacity_indices)
+            .map_or(SelectBackendResult::AllAtCapacity, |idx| {
+                SelectBackendResult::Selected(backends[idx].clone())
+            })
     }
 
     /// Forward a request to the selected backend.

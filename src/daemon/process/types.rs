@@ -48,7 +48,7 @@ impl LogRotationConfig {
     /// Provided for API completeness. Currently `spawn_instance` uses defaults.
     #[allow(dead_code)]
     #[must_use]
-    pub fn max_files(mut self, count: usize) -> Self {
+    pub const fn max_files(mut self, count: usize) -> Self {
         self.max_files = count;
         self
     }

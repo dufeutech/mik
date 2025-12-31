@@ -449,11 +449,8 @@ fn is_valid_git_url(git: &str) -> bool {
     }
 
     // Standard URL parsing for http/https/git/ssh schemes
-    match Url::parse(git) {
-        Ok(url) => {
-            let scheme = url.scheme();
-            matches!(scheme, "http" | "https" | "git" | "ssh") && url.host().is_some()
-        },
-        Err(_) => false,
-    }
+    Url::parse(git).is_ok_and(|url| {
+        let scheme = url.scheme();
+        matches!(scheme, "http" | "https" | "git" | "ssh") && url.host().is_some()
+    })
 }

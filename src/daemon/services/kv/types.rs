@@ -21,7 +21,7 @@ pub(super) struct KvEntry {
 
 impl KvEntry {
     /// Creates a new entry without expiration
-    pub fn new(value: Vec<u8>) -> Self {
+    pub const fn new(value: Vec<u8>) -> Self {
         Self {
             value,
             expires_at: None,

@@ -271,10 +271,10 @@ pub fn record_cron_execution(job: &str, success: bool, duration_secs: f64) {
 
 /// Renders all metrics in Prometheus text format.
 pub fn render_metrics() -> String {
-    match get_handle() {
-        Some(handle) => handle.render(),
-        None => "# Metrics not initialized\n".to_string(),
-    }
+    get_handle().map_or_else(
+        || "# Metrics not initialized\n".to_string(),
+        metrics_exporter_prometheus::PrometheusHandle::render,
+    )
 }
 
 #[cfg(test)]

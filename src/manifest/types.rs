@@ -188,7 +188,7 @@ impl Default for ServerConfig {
 impl ServerConfig {
     /// Check if outgoing HTTP is enabled.
     #[allow(dead_code)] // Public API for host runtime
-    pub fn http_enabled(&self) -> bool {
+    pub const fn http_enabled(&self) -> bool {
         !self.http_allowed.is_empty()
     }
 
