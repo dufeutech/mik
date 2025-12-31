@@ -190,22 +190,22 @@ fn extract_tar_gz(archive: &Path, dest: &Path) -> Result<()> {
         let path = entry.path()?;
 
         // Look for wasm-tools binary
-        if let Some(name) = path.file_name() {
-            if name == "wasm-tools" {
-                let out_path = dest.join("wasm-tools");
-                entry.unpack(&out_path)?;
+        if let Some(name) = path.file_name()
+            && name == "wasm-tools"
+        {
+            let out_path = dest.join("wasm-tools");
+            entry.unpack(&out_path)?;
 
-                // Make executable
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let mut perms = std::fs::metadata(&out_path)?.permissions();
-                    perms.set_mode(0o755);
-                    std::fs::set_permissions(&out_path, perms)?;
-                }
-
-                return Ok(());
+            // Make executable
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perms = std::fs::metadata(&out_path)?.permissions();
+                perms.set_mode(0o755);
+                std::fs::set_permissions(&out_path, perms)?;
             }
+
+            return Ok(());
         }
     }
 
