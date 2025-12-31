@@ -60,7 +60,9 @@ proptest! {
                 "Sanitized path should never contain '/../': {}",
                 path_str
             );
-            // Also check Windows-style separators
+            // Backslash is only a path separator on Windows.
+            // On Unix, backslash is a valid filename character.
+            #[cfg(windows)]
             prop_assert!(
                 !path_str.contains("\\..\\"),
                 "Sanitized path should never contain '\\..\\': {}",
@@ -658,18 +660,26 @@ proptest! {
     /// Invariant: Path traversal with encoded characters is handled
     ///
     /// Even if ".." is somehow embedded in a path, it should be handled safely.
+    /// Note: Backslash variants are only path separators on Windows.
+    /// On Unix, backslashes are literal filename characters.
     #[test]
     fn path_traversal_variants_rejected(
         prefix in "[a-zA-Z0-9]{0,5}",
         suffix in "[a-zA-Z0-9]{0,5}"
     ) {
-        let test_cases = [
+        // Forward slash variants work on all platforms
+        let mut test_cases = vec![
             format!("{}/../{}", prefix, suffix),
-            format!("{}\\..\\{}", prefix, suffix),
             format!("../{}", suffix),
-            format!("..\\{}", suffix),
             format!("{}/../../{}", prefix, suffix),
         ];
+
+        // Backslash variants are only path separators on Windows
+        #[cfg(windows)]
+        {
+            test_cases.push(format!("{}\\..\\{}", prefix, suffix));
+            test_cases.push(format!("..\\{}", suffix));
+        }
 
         for path in &test_cases {
             let result = sanitize_file_path(path);
