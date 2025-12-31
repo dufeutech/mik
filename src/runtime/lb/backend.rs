@@ -170,13 +170,13 @@ impl Backend {
 
     /// Get the backend weight for load balancing.
     #[allow(dead_code)]
-    pub fn weight(&self) -> u32 {
+    pub const fn weight(&self) -> u32 {
         self.weight
     }
 
     /// Get the maximum connections limit for this backend.
     #[allow(dead_code)]
-    pub fn max_connections(&self) -> u32 {
+    pub const fn max_connections(&self) -> u32 {
         self.max_connections
     }
 
@@ -278,7 +278,7 @@ impl Backend {
 
     /// Get a reference to the circuit breaker (if configured).
     #[allow(dead_code)]
-    pub fn circuit_breaker(&self) -> Option<&CircuitBreaker> {
+    pub const fn circuit_breaker(&self) -> Option<&CircuitBreaker> {
         self.circuit_breaker.as_ref()
     }
 

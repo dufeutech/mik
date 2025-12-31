@@ -63,10 +63,7 @@ fn get_wasm_tools() -> Result<PathBuf> {
     }
 
     // Download wasm-tools
-    println!(
-        "wasm-tools not found, downloading v{}...",
-        WASM_TOOLS_VERSION
-    );
+    println!("wasm-tools not found, downloading v{WASM_TOOLS_VERSION}...");
     download_wasm_tools(&mik_bin)?;
 
     Ok(wasm_tools_path)
@@ -80,11 +77,10 @@ fn download_wasm_tools(bin_dir: &Path) -> Result<()> {
     let archive_ext = if cfg!(windows) { "zip" } else { "tar.gz" };
 
     let url = format!(
-        "https://github.com/bytecodealliance/wasm-tools/releases/download/v{}/wasm-tools-{}-{}-{}.{}",
-        WASM_TOOLS_VERSION, WASM_TOOLS_VERSION, arch, os, archive_ext
+        "https://github.com/bytecodealliance/wasm-tools/releases/download/v{WASM_TOOLS_VERSION}/wasm-tools-{WASM_TOOLS_VERSION}-{arch}-{os}.{archive_ext}"
     );
 
-    println!("Downloading from: {}", url);
+    println!("Downloading from: {url}");
 
     // Download using ureq (already a dependency)
     #[cfg(feature = "registry")]
@@ -94,7 +90,7 @@ fn download_wasm_tools(bin_dir: &Path) -> Result<()> {
             .context("Failed to download wasm-tools")?;
 
         let mut reader = response.into_body().into_reader();
-        let temp_file = bin_dir.join(format!("wasm-tools-download.{}", archive_ext));
+        let temp_file = bin_dir.join(format!("wasm-tools-download.{archive_ext}"));
 
         {
             let mut file = std::fs::File::create(&temp_file)?;
@@ -228,7 +224,7 @@ pub fn execute(input: &str, options: StripOptions) -> Result<()> {
 
     // Validate input exists
     if !input_path.exists() {
-        bail!("Input file not found: {}", input);
+        bail!("Input file not found: {input}");
     }
 
     // Get wasm-tools (download if needed)
@@ -242,9 +238,9 @@ pub fn execute(input: &str, options: StripOptions) -> Result<()> {
                 .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("component");
-            let parent = input_path.parent().unwrap_or(Path::new("."));
+            let parent = input_path.parent().unwrap_or_else(|| Path::new("."));
             parent
-                .join(format!("{}.stripped.wasm", stem))
+                .join(format!("{stem}.stripped.wasm"))
                 .to_string_lossy()
                 .to_string()
         },
@@ -276,7 +272,7 @@ pub fn execute(input: &str, options: StripOptions) -> Result<()> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("wasm-tools strip failed: {}", stderr);
+        bail!("wasm-tools strip failed: {stderr}");
     }
 
     // Report results
@@ -289,7 +285,7 @@ pub fn execute(input: &str, options: StripOptions) -> Result<()> {
         0.0
     };
 
-    println!("Stripped: {} -> {}", input, output_path);
+    println!("Stripped: {input} -> {output_path}");
     println!(
         "Size: {} -> {} ({:.1}% smaller, saved {})",
         format_size(input_size),
@@ -310,6 +306,6 @@ fn format_size(bytes: u64) -> String {
     } else if bytes >= KB {
         format!("{:.1}KB", bytes as f64 / KB as f64)
     } else {
-        format!("{}B", bytes)
+        format!("{bytes}B")
     }
 }

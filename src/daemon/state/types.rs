@@ -58,7 +58,7 @@ pub struct Sidecar {
     pub healthy: bool,
 }
 
-fn default_healthy() -> bool {
+const fn default_healthy() -> bool {
     true
 }
 

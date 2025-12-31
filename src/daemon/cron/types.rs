@@ -44,7 +44,7 @@ pub struct ScheduleConfig {
 }
 
 /// Default port value (3000).
-pub fn default_port() -> u16 {
+pub const fn default_port() -> u16 {
     3000
 }
 
@@ -64,7 +64,7 @@ pub fn default_path() -> String {
 }
 
 /// Default enabled state (true).
-pub fn default_enabled() -> bool {
+pub const fn default_enabled() -> bool {
     true
 }
 
@@ -125,7 +125,7 @@ pub(crate) struct JobState {
 
 impl JobState {
     /// Creates a new `JobState` with the given configuration.
-    pub fn new(config: ScheduleConfig, job_id: Option<uuid::Uuid>) -> Self {
+    pub const fn new(config: ScheduleConfig, job_id: Option<uuid::Uuid>) -> Self {
         Self {
             config,
             job_id,

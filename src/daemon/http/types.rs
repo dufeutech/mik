@@ -340,11 +340,11 @@ fn default_path() -> String {
     "/".to_string()
 }
 
-fn default_enabled() -> bool {
+const fn default_enabled() -> bool {
     true
 }
 
-fn default_port() -> u16 {
+const fn default_port() -> u16 {
     3000
 }
 

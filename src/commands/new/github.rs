@@ -54,12 +54,10 @@ fn parse_github_ref(github_ref: &str) -> Result<(String, Option<String>)> {
     let cleaned = github_ref.strip_prefix("github:").unwrap_or(github_ref);
 
     // Split on # to get branch
-    let (repo_part, branch) = if let Some(idx) = cleaned.find('#') {
+    let (repo_part, branch) = cleaned.find('#').map_or((cleaned, None), |idx| {
         let (repo, branch) = cleaned.split_at(idx);
         (repo, Some(branch[1..].to_string()))
-    } else {
-        (cleaned, None)
-    };
+    });
 
     // Validate repo format (user/repo)
     if !repo_part.contains('/') || repo_part.starts_with('/') || repo_part.ends_with('/') {

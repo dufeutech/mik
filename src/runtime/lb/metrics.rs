@@ -89,6 +89,7 @@ impl LbMetrics {
     /// * `backend` - The backend address (e.g., "127.0.0.1:3001")
     /// * `status` - The request status ("success" or "failure")
     /// * `duration_secs` - The request duration in seconds
+    #[allow(clippy::unused_self)]
     pub fn record_request(&self, backend: &str, status: &str, duration_secs: f64) {
         counter!(
             "mik_lb_requests_total",
@@ -107,6 +108,7 @@ impl LbMetrics {
     /// Records a successful request.
     ///
     /// Convenience method that calls `record_request` with status="success".
+    #[allow(clippy::unused_self)]
     pub fn record_success(&self, backend: &str, duration_secs: f64) {
         self.record_request(backend, "success", duration_secs);
     }
@@ -114,6 +116,7 @@ impl LbMetrics {
     /// Records a failed request.
     ///
     /// Convenience method that calls `record_request` with status="failure".
+    #[allow(clippy::unused_self)]
     pub fn record_failure(&self, backend: &str, duration_secs: f64) {
         self.record_request(backend, "failure", duration_secs);
     }
@@ -123,6 +126,7 @@ impl LbMetrics {
     /// # Arguments
     ///
     /// * `count` - Number of healthy backends
+    #[allow(clippy::unused_self)]
     pub fn set_backends_healthy(&self, count: usize) {
         #[allow(clippy::cast_precision_loss)]
         gauge!("mik_lb_backends_healthy").set(count as f64);
@@ -133,6 +137,7 @@ impl LbMetrics {
     /// # Arguments
     ///
     /// * `count` - Total number of backends
+    #[allow(clippy::unused_self)]
     pub fn set_backends_total(&self, count: usize) {
         #[allow(clippy::cast_precision_loss)]
         gauge!("mik_lb_backends_total").set(count as f64);
@@ -144,6 +149,7 @@ impl LbMetrics {
     ///
     /// * `backend` - The backend address (e.g., "127.0.0.1:3001")
     /// * `connections` - Number of active connections
+    #[allow(clippy::unused_self)]
     pub fn set_active_connections(&self, backend: &str, connections: u64) {
         #[allow(clippy::cast_precision_loss)]
         gauge!(

@@ -361,14 +361,14 @@ pub async fn stats() -> Result<()> {
             system.refresh_processes(ProcessesToUpdate::All, true);
 
             for instance in &instances {
-                let (cpu, mem, status) =
-                    if let Some(proc) = system.process(Pid::from(instance.pid as usize)) {
+                let (cpu, mem, status) = system.process(Pid::from(instance.pid as usize)).map_or(
+                    ("-".to_string(), "-".to_string(), "stopped".to_string()),
+                    |proc| {
                         let cpu = format!("{:.1}%", proc.cpu_usage());
                         let mem = format_bytes(proc.memory());
                         (cpu, mem, "running".to_string())
-                    } else {
-                        ("-".to_string(), "-".to_string(), "stopped".to_string())
-                    };
+                    },
+                );
 
                 println!(
                     "{:<12} {:<6} {:<8} {:<8} {:<12} {}",

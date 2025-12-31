@@ -244,14 +244,12 @@ fn generate_mik_toml(ctx: &TemplateContext, lang: Language) -> Result<String> {
             name: ctx.project_name.clone(),
             version: ctx.version.clone(),
             description: Some("A WASI HTTP component".to_string()),
-            authors: if let Some(ref name) = ctx.author_name {
+            authors: ctx.author_name.as_ref().map_or(vec![], |name| {
                 vec![Author {
                     name: name.clone(),
                     email: ctx.author_email.clone(),
                 }]
-            } else {
-                vec![]
-            },
+            }),
             // Only set language for non-Rust projects (Rust is default)
             language: match lang {
                 Language::Rust => None,

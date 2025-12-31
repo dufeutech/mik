@@ -62,11 +62,11 @@ struct ManifestServerConfig {
     scripts: Option<String>,
 }
 
-fn default_auto() -> bool {
+const fn default_auto() -> bool {
     true
 }
 
-fn default_port() -> u16 {
+const fn default_port() -> u16 {
     constants::DEFAULT_PORT
 }
 
@@ -74,19 +74,19 @@ fn default_modules_dir() -> String {
     format!("{}/", constants::DEFAULT_MODULES_DIR)
 }
 
-fn default_execution_timeout_secs() -> u64 {
+const fn default_execution_timeout_secs() -> u64 {
     DEFAULT_EXECUTION_TIMEOUT_SECS
 }
 
-fn default_memory_limit_bytes() -> usize {
+const fn default_memory_limit_bytes() -> usize {
     DEFAULT_MEMORY_LIMIT_BYTES
 }
 
-fn default_max_body_size_mb() -> usize {
+const fn default_max_body_size_mb() -> usize {
     DEFAULT_MAX_BODY_SIZE_MB
 }
 
-fn default_shutdown_timeout_secs() -> u64 {
+const fn default_shutdown_timeout_secs() -> u64 {
     DEFAULT_SHUTDOWN_TIMEOUT_SECS
 }
 
@@ -334,7 +334,7 @@ impl HostBuilder {
     }
 
     /// Set the LRU cache size.
-    pub fn cache_size(mut self, size: usize) -> Self {
+    pub const fn cache_size(mut self, size: usize) -> Self {
         self.config.cache_size = size;
         self
     }
@@ -346,43 +346,43 @@ impl HostBuilder {
     }
 
     /// Set the port (used when not overridden by CLI).
-    pub fn port(mut self, port: u16) -> Self {
+    pub const fn port(mut self, port: u16) -> Self {
         self.config.port = port;
         self
     }
 
     /// Set the execution timeout in seconds.
-    pub fn execution_timeout(mut self, timeout_secs: u64) -> Self {
+    pub const fn execution_timeout(mut self, timeout_secs: u64) -> Self {
         self.config.execution_timeout_secs = timeout_secs;
         self
     }
 
     /// Set the memory limit per request in bytes.
-    pub fn memory_limit(mut self, limit_bytes: usize) -> Self {
+    pub const fn memory_limit(mut self, limit_bytes: usize) -> Self {
         self.config.memory_limit_bytes = limit_bytes;
         self
     }
 
     /// Set the maximum concurrent requests.
-    pub fn max_concurrent_requests(mut self, max: usize) -> Self {
+    pub const fn max_concurrent_requests(mut self, max: usize) -> Self {
         self.config.max_concurrent_requests = max;
         self
     }
 
     /// Set the maximum request body size in bytes.
-    pub fn max_body_size(mut self, max_bytes: usize) -> Self {
+    pub const fn max_body_size(mut self, max_bytes: usize) -> Self {
         self.config.max_body_size_bytes = max_bytes;
         self
     }
 
     /// Set the maximum concurrent requests per module.
-    pub fn max_per_module_requests(mut self, max: usize) -> Self {
+    pub const fn max_per_module_requests(mut self, max: usize) -> Self {
         self.config.max_per_module_requests = max;
         self
     }
 
     /// Enable wasi:logging for WASM modules.
-    pub fn logging(mut self, enabled: bool) -> Self {
+    pub const fn logging(mut self, enabled: bool) -> Self {
         self.config.logging_enabled = enabled;
         self
     }
@@ -394,19 +394,19 @@ impl HostBuilder {
     }
 
     /// Enable hot-reload mode (bypasses persistent AOT cache).
-    pub fn hot_reload(mut self, enabled: bool) -> Self {
+    pub const fn hot_reload(mut self, enabled: bool) -> Self {
         self.config.hot_reload = enabled;
         self
     }
 
     /// Set the maximum AOT cache size in MB.
-    pub fn aot_cache_max_mb(mut self, max_mb: usize) -> Self {
+    pub const fn aot_cache_max_mb(mut self, max_mb: usize) -> Self {
         self.config.aot_cache_max_mb = max_mb;
         self
     }
 
     /// Get the configured port.
-    pub fn get_port(&self) -> u16 {
+    pub const fn get_port(&self) -> u16 {
         self.config.port
     }
 

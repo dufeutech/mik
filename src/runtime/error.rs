@@ -144,7 +144,7 @@ impl Error {
 /// Convert runtime error to HTTP status code.
 impl Error {
     /// Get the appropriate HTTP status code for this error.
-    pub fn status_code(&self) -> u16 {
+    pub const fn status_code(&self) -> u16 {
         match self {
             Self::ModuleNotFound { .. } | Self::ScriptNotFound { .. } => 404,
             Self::PathTraversal { .. } | Self::InvalidRequest(_) => 400,

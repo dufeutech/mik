@@ -94,7 +94,7 @@ impl Error {
     }
 
     /// Get the appropriate HTTP status code for this error.
-    pub fn status_code(&self) -> u16 {
+    pub const fn status_code(&self) -> u16 {
         match self {
             Self::ProcessNotFound { .. } => 404,
             Self::ProcessAlreadyRunning { .. } => 409,
@@ -112,7 +112,7 @@ impl Error {
     }
 
     /// Get a client-safe error message (doesn't leak internal details).
-    pub fn client_message(&self) -> &str {
+    pub const fn client_message(&self) -> &str {
         match self {
             Self::ProcessNotFound { .. } => "Process not found",
             Self::ProcessAlreadyRunning { .. } => "Process already running",

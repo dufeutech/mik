@@ -54,7 +54,7 @@ pub(crate) fn native_host_call(module: String, options_json: String) -> rquickjs
 
         // Parse options
         let options: serde_json::Value = serde_json::from_str(&options_json)
-            .unwrap_or(serde_json::Value::Object(serde_json::Map::default()));
+            .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::default()));
 
         let method = options
             .get("method")

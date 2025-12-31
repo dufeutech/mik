@@ -63,7 +63,7 @@ impl Default for LogConfig {
 
 impl LogConfig {
     /// Create config for JSON logging (production).
-    pub fn json() -> Self {
+    pub const fn json() -> Self {
         Self {
             format: LogFormat::Json,
             level: Level::INFO,
@@ -76,7 +76,7 @@ impl LogConfig {
     }
 
     /// Create config for development (pretty output).
-    pub fn development() -> Self {
+    pub const fn development() -> Self {
         Self {
             format: LogFormat::Pretty,
             level: Level::DEBUG,
@@ -90,14 +90,14 @@ impl LogConfig {
 
     /// Set the log level.
     #[must_use]
-    pub fn level(mut self, level: Level) -> Self {
+    pub const fn level(mut self, level: Level) -> Self {
         self.level = level;
         self
     }
 
     /// Set the log format.
     #[must_use]
-    pub fn format(mut self, format: LogFormat) -> Self {
+    pub const fn format(mut self, format: LogFormat) -> Self {
         self.format = format;
         self
     }

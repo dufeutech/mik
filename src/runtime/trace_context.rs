@@ -46,17 +46,17 @@ impl TraceFlags {
     pub const SAMPLED: Self = Self(0x01);
 
     /// Check if sampled flag is set
-    pub fn is_sampled(self) -> bool {
+    pub const fn is_sampled(self) -> bool {
         self.0 & 0x01 != 0
     }
 
     /// Create from raw byte
-    pub fn from_byte(b: u8) -> Self {
+    pub const fn from_byte(b: u8) -> Self {
         Self(b)
     }
 
     /// Get raw byte value
-    pub fn as_byte(self) -> u8 {
+    pub const fn as_byte(self) -> u8 {
         self.0
     }
 }

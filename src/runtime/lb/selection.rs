@@ -30,7 +30,7 @@ pub struct RoundRobin {
 
 impl RoundRobin {
     /// Create a new round-robin selector for the given number of backends.
-    pub fn new(total: usize) -> Self {
+    pub const fn new(total: usize) -> Self {
         Self {
             current: AtomicUsize::new(0),
             total,
@@ -144,7 +144,7 @@ impl WeightedRoundRobin {
 
     /// Get the total weight of all backends.
     #[allow(dead_code)]
-    pub(super) fn total_weight(&self) -> usize {
+    pub(super) const fn total_weight(&self) -> usize {
         self.total_weight
     }
 }

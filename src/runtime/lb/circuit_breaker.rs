@@ -122,7 +122,7 @@ pub struct CircuitBreaker {
 
 impl CircuitBreaker {
     /// Create a new circuit breaker with the given configuration.
-    pub fn new(config: CircuitBreakerConfig) -> Self {
+    pub const fn new(config: CircuitBreakerConfig) -> Self {
         Self {
             config,
             state: AtomicU8::new(CircuitBreakerState::Closed as u8),
@@ -237,7 +237,7 @@ impl CircuitBreaker {
 
     /// Get the configuration.
     #[allow(dead_code)]
-    pub fn config(&self) -> &CircuitBreakerConfig {
+    pub const fn config(&self) -> &CircuitBreakerConfig {
         &self.config
     }
 

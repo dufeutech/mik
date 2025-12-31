@@ -23,7 +23,7 @@ impl Default for ReloadConfig {
 impl ReloadConfig {
     /// Create a new reload configuration with custom drain timeout.
     #[allow(dead_code)]
-    pub fn with_drain_timeout(drain_timeout: Duration) -> Self {
+    pub const fn with_drain_timeout(drain_timeout: Duration) -> Self {
         Self { drain_timeout }
     }
 }
@@ -63,7 +63,7 @@ pub struct ReloadResult {
 impl ReloadResult {
     /// Check if any changes were made.
     #[allow(dead_code)]
-    pub fn has_changes(&self) -> bool {
+    pub const fn has_changes(&self) -> bool {
         !self.added.is_empty() || !self.draining.is_empty()
     }
 }

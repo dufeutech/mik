@@ -30,7 +30,7 @@ pub struct ValidationResult {
 impl ValidationResult {
     /// Returns true if there are any warnings.
     #[must_use]
-    pub fn has_warnings(&self) -> bool {
+    pub const fn has_warnings(&self) -> bool {
         !self.warnings.is_empty()
     }
 }
@@ -58,11 +58,11 @@ pub struct ServerConfig {
     pub cache_size: usize,
 }
 
-fn default_port() -> u16 {
+const fn default_port() -> u16 {
     constants::DEFAULT_PORT
 }
 
-fn default_cache_size() -> usize {
+const fn default_cache_size() -> usize {
     constants::DEFAULT_CACHE_SIZE
 }
 

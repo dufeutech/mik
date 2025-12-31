@@ -601,7 +601,7 @@ async fn spawn_and_save_restarted_instance(store: &StateStore, instance: &Instan
         working_dir: instance
             .config
             .parent()
-            .unwrap_or(std::path::Path::new("."))
+            .unwrap_or_else(|| std::path::Path::new("."))
             .to_path_buf(),
         hot_reload: false,
     };

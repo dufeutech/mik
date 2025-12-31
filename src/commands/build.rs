@@ -58,8 +58,8 @@ pub async fn execute(release: bool, compose: bool, lang_override: Option<String>
 
     // Build based on language
     let (wasm_path, target_base) = match language {
-        "rust" => build_rust(&name, release).await?,
-        "typescript" => build_typescript(&name).await?,
+        "rust" => build_rust(&name, release)?,
+        "typescript" => build_typescript(&name)?,
         _ => bail!("Unsupported language: {language}"),
     };
 
@@ -105,7 +105,7 @@ pub async fn execute(release: bool, compose: bool, lang_override: Option<String>
 // =============================================================================
 
 /// Build Rust project with cargo-component.
-async fn build_rust(name: &str, release: bool) -> Result<(PathBuf, PathBuf)> {
+fn build_rust(name: &str, release: bool) -> Result<(PathBuf, PathBuf)> {
     // Check for Cargo.toml
     if !Path::new("Cargo.toml").exists() {
         bail!("No Cargo.toml found. Run from a Rust project directory or use --lang flag.");
@@ -194,7 +194,7 @@ fn check_npm() -> bool {
 }
 
 /// Build `TypeScript` project with jco componentize.
-async fn build_typescript(name: &str) -> Result<(PathBuf, PathBuf)> {
+fn build_typescript(name: &str) -> Result<(PathBuf, PathBuf)> {
     // Check for package.json
     if !Path::new("package.json").exists() {
         bail!("No package.json found. Run from a TypeScript project directory.");
@@ -257,7 +257,7 @@ async fn build_typescript(name: &str) -> Result<(PathBuf, PathBuf)> {
         if fallback.exists() {
             return Ok((fallback, PathBuf::from(".")));
         }
-        bail!("WASM output not found: {}.wasm or handler.wasm", name);
+        bail!("WASM output not found: {name}.wasm or handler.wasm");
     }
 
     Ok((wasm_path, PathBuf::from(".")))

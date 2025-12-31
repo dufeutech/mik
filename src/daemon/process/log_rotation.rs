@@ -67,7 +67,7 @@ pub fn rotate_log_if_needed(log_path: &Path, config: &LogRotationConfig) -> Resu
 
 /// Cleans up old rotated log files, keeping only the most recent ones.
 pub(crate) fn cleanup_old_logs(log_path: &Path, max_files: usize) {
-    let log_dir = log_path.parent().unwrap_or(Path::new("."));
+    let log_dir = log_path.parent().unwrap_or_else(|| Path::new("."));
     let log_name = log_path.file_name().unwrap_or_default().to_string_lossy();
 
     // Find all rotated log files (matching pattern: {name}.{timestamp})

@@ -112,7 +112,7 @@ pub fn maybe_compress_response(
 
     // Check body size hint first
     let size_hint = body.size_hint();
-    let body_size = size_hint.exact().unwrap_or(size_hint.lower()) as usize;
+    let body_size = size_hint.exact().unwrap_or_else(|| size_hint.lower()) as usize;
 
     if body_size < GZIP_MIN_SIZE {
         return Response::from_parts(parts, body);

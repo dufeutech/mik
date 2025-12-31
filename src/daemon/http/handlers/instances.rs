@@ -313,7 +313,7 @@ pub(crate) async fn restart_instance(
         working_dir: instance
             .config
             .parent()
-            .unwrap_or(std::path::Path::new("."))
+            .unwrap_or_else(|| std::path::Path::new("."))
             .to_path_buf(),
         hot_reload: false,
     };

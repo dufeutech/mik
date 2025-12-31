@@ -84,11 +84,10 @@ pub async fn execute(
         // Optimal workers per instance for multi-LB scaling
         let optimal = (threads / 4).max(2);
         println!(
-            "Auto-detected {} threads, using {} workers\n\
+            "Auto-detected {threads} threads, using {optimal} workers\n\
              Tip: Run 2 instances on different ports for ~12% more throughput:\n\
              \x20 mik run --workers 0 --lb --port 3000\n\
-             \x20 mik run --workers 0 --lb --port 4000",
-            threads, optimal
+             \x20 mik run --workers 0 --lb --port 4000"
         );
         optimal
     } else {
@@ -121,7 +120,7 @@ async fn run_multi_worker(
         .or_else(Manifest::load_port)
         .unwrap_or(crate::constants::DEFAULT_PORT);
 
-    println!("Starting {} workers...\n", workers);
+    println!("Starting {workers} workers...\n");
 
     // Get current executable path
     let exe = std::env::current_exe().context("Failed to get current executable")?;
@@ -209,10 +208,7 @@ async fn run_with_lb(
         .or_else(Manifest::load_port)
         .unwrap_or(crate::constants::DEFAULT_PORT);
 
-    println!(
-        "Starting {} workers with integrated L7 load balancer...\n",
-        workers
-    );
+    println!("Starting {workers} workers with integrated L7 load balancer...\n");
 
     // Get current executable path
     let exe = std::env::current_exe().context("Failed to get current executable")?;
