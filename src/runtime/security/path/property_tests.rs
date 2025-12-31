@@ -45,28 +45,52 @@ fn valid_path_strategy() -> impl Strategy<Value = String> {
 }
 
 /// Strategy for generating paths that might contain traversal attempts.
+/// Note: Backslash variants are only included on Windows since backslash
+/// is a literal filename character on Unix, not a path separator.
 fn traversal_attempt_strategy() -> impl Strategy<Value = String> {
-    prop_oneof![
-        // Direct traversal
-        Just("..".to_string()),
-        Just("../".to_string()),
-        Just("../..".to_string()),
-        // Traversal in path
-        Just("../etc/passwd".to_string()),
-        Just("foo/../..".to_string()),
-        Just("a/b/c/../../../../etc".to_string()),
-        // Windows-style
-        Just("..\\".to_string()),
-        Just("..\\..".to_string()),
-        Just("foo\\..\\..".to_string()),
-        // Mixed separators
-        Just("..\\../foo".to_string()),
-        Just("foo/..\\..".to_string()),
-        // With regular path components
-        valid_path_strategy().prop_map(|p| format!("../{p}")),
-        valid_path_strategy().prop_map(|p| format!("{p}/../..")),
-        valid_path_strategy().prop_map(|p| format!("{p}/../../../etc")),
-    ]
+    // Forward slash variants work on all platforms
+    #[cfg(not(windows))]
+    {
+        prop_oneof![
+            // Direct traversal
+            Just("..".to_string()),
+            Just("../".to_string()),
+            Just("../..".to_string()),
+            // Traversal in path
+            Just("../etc/passwd".to_string()),
+            Just("foo/../..".to_string()),
+            Just("a/b/c/../../../../etc".to_string()),
+            // With regular path components
+            valid_path_strategy().prop_map(|p| format!("../{p}")),
+            valid_path_strategy().prop_map(|p| format!("{p}/../..")),
+            valid_path_strategy().prop_map(|p| format!("{p}/../../../etc")),
+        ]
+    }
+
+    #[cfg(windows)]
+    {
+        prop_oneof![
+            // Direct traversal
+            Just("..".to_string()),
+            Just("../".to_string()),
+            Just("../..".to_string()),
+            // Traversal in path
+            Just("../etc/passwd".to_string()),
+            Just("foo/../..".to_string()),
+            Just("a/b/c/../../../../etc".to_string()),
+            // Windows-style (backslash is a path separator on Windows)
+            Just("..\\".to_string()),
+            Just("..\\..".to_string()),
+            Just("foo\\..\\..".to_string()),
+            // Mixed separators
+            Just("..\\../foo".to_string()),
+            Just("foo/..\\..".to_string()),
+            // With regular path components
+            valid_path_strategy().prop_map(|p| format!("../{p}")),
+            valid_path_strategy().prop_map(|p| format!("{p}/../..")),
+            valid_path_strategy().prop_map(|p| format!("{p}/../../../etc")),
+        ]
+    }
 }
 
 /// Strategy for generating strings with null bytes.
