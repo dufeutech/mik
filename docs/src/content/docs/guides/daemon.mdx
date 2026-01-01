@@ -5,6 +5,71 @@ description: Complete guide to mik daemon - instance management and embedded ser
 
 The mik daemon is a background process that manages WASM instances and provides embedded services (KV, SQL, Storage, Cron). It exposes a REST API for programmatic control.
 
+## Operating Modes
+
+mik supports three operating modes, each adding more capabilities:
+
+| Mode | Command | Services | Use Case |
+|------|---------|----------|----------|
+| **Direct** | `mik run` | None | Development, testing |
+| **Daemon** | `mik daemon` + `mik up` | Embedded (SQLite, KV, Storage, Cron) | Dev, small deployments |
+| **Sidecar** | Handler + mikcar | Production (Postgres, Redis, S3) | Scale, multi-node |
+
+### Direct Mode
+
+Run a handler in the foreground with no additional services:
+
+```bash
+mik run                    # Serves modules/ on port 3000
+mik run my-handler.wasm    # Serves single component
+```
+
+Handlers can only make outbound HTTP calls. No database, no cron, no storage.
+
+### Daemon Mode (this guide)
+
+The daemon provides a **mini-sidecar** with embedded services:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  mik daemon (port 9999)                             │
+│  ───────────────────────                            │
+│  Embedded services:                                 │
+│  • KV Store (redb)      • SQL (SQLite)              │
+│  • Storage (filesystem) • Cron (scheduled jobs)     │
+│                                                     │
+│  Good for: dev, prototyping, small deployments      │
+└─────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────┐
+│  Handler instances (port 3000, 3001, ...)           │
+│  Call daemon services via HTTP                      │
+└─────────────────────────────────────────────────────┘
+```
+
+Handlers call `http://localhost:9999/kv/...`, `/sql/...`, etc.
+
+### Sidecar Mode (mikcar)
+
+For production at scale, use [mikcar](https://github.com/dufeut/mikcar) instead:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  mikcar (production sidecar)                        │
+│  ───────────────────────────                        │
+│  Real infrastructure:                               │
+│  • Redis/Valkey         • PostgreSQL/MySQL          │
+│  • S3/MinIO             • Real job queues           │
+│                                                     │
+│  Good for: production, scale, multi-node            │
+└─────────────────────────────────────────────────────┘
+```
+
+**Same HTTP API, different backends.** Your handler code doesn't change - just swap the sidecar.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -446,18 +511,8 @@ flowchart TB
 
 ---
 
-## When to Use
+## Summary
 
-**Use the daemon for:**
+The daemon is a **mini-sidecar** - embedded services for development and small deployments. For production at scale, swap to [mikcar](https://github.com/dufeut/mikcar) with the same API but real infrastructure backends.
 
-- Local development
-- Simple single-node deployments
-- Prototyping and testing
-- When you need an all-in-one solution
-
-**Use external services (mikcar) for:**
-
-- Production at scale
-- Multi-node deployments
-- When you need Redis/Postgres/S3 specifically
-- When you need replication/clustering
+See [Operating Modes](#operating-modes) for the full comparison.
