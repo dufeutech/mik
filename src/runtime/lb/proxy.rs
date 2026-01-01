@@ -303,6 +303,7 @@ impl ProxyBuilder {
     }
 
     /// Add a backend to the proxy.
+    #[must_use]
     pub fn backend(mut self, backend: Backend) -> Self {
         self.backends.push(backend);
         self
@@ -313,6 +314,7 @@ impl ProxyBuilder {
     /// # Errors
     ///
     /// Returns an error if the address cannot be parsed.
+    #[must_use]
     pub fn http_backend(mut self, address: impl Into<String>) -> Self {
         self.backends
             .push(Backend::Http(HttpBackend::new(address.into())));
@@ -320,6 +322,7 @@ impl ProxyBuilder {
     }
 
     /// Set the load balancing strategy.
+    #[must_use]
     pub fn strategy(mut self, strategy: LoadBalanceStrategy) -> Self {
         self.strategy = strategy;
         self
@@ -328,30 +331,35 @@ impl ProxyBuilder {
     /// Set the health check configuration.
     ///
     /// Pass `None` to disable health checking.
+    #[must_use]
     pub fn health_check(mut self, config: Option<HealthCheckConfig>) -> Self {
         self.health_check = config;
         self
     }
 
     /// Set the request timeout.
+    #[must_use]
     pub fn request_timeout(mut self, timeout: Duration) -> Self {
         self.request_timeout = timeout;
         self
     }
 
     /// Set the maximum connections per backend for HTTP backends.
+    #[must_use]
     pub fn max_connections_per_backend(mut self, max: usize) -> Self {
         self.max_connections_per_backend = max;
         self
     }
 
     /// Set the connection pool idle timeout.
+    #[must_use]
     pub fn pool_idle_timeout(mut self, timeout: Duration) -> Self {
         self.pool_idle_timeout = timeout;
         self
     }
 
     /// Set the TCP keepalive interval.
+    #[must_use]
     pub fn tcp_keepalive(mut self, interval: Duration) -> Self {
         self.tcp_keepalive = interval;
         self
@@ -361,6 +369,7 @@ impl ProxyBuilder {
     ///
     /// When enabled, HTTP/2 with prior knowledge is used for all backend connections.
     /// Only enable this when all backends support HTTP/2.
+    #[must_use]
     pub fn http2_only(mut self, enabled: bool) -> Self {
         self.http2_only = enabled;
         self

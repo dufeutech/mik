@@ -1,3 +1,7 @@
+// Allow dead code and unused imports for library-first API
+// Cluster types are for external consumers, not yet integrated with CLI
+#![allow(dead_code, unused_imports)]
+
 //! Cluster orchestration for multi-worker deployments.
 //!
 //! This module provides abstractions for running multiple mik workers,
@@ -100,8 +104,7 @@ impl WorkerHandle {
     #[must_use]
     pub const fn port(&self) -> u16 {
         match self {
-            Self::Process { port, .. } => *port,
-            Self::Task { port, .. } => *port,
+            Self::Process { port, .. } | Self::Task { port, .. } => *port,
         }
     }
 
@@ -210,6 +213,7 @@ impl Cluster {
     }
 
     /// Shutdown all workers gracefully.
+    #[allow(clippy::unused_async)] // May add async shutdown in the future
     pub async fn shutdown(&self) {
         for worker in &self.workers {
             match worker {
@@ -362,6 +366,7 @@ impl ClusterBuilder {
     /// Returns an error if:
     /// - No runtime factory was specified
     /// - Failed to create Runtime instances
+    #[allow(clippy::unused_async)] // May need async for future spawn operations
     pub async fn spawn_tasks_headless(self) -> Result<Cluster> {
         let factory = self.runtime_factory.ok_or_else(|| {
             anyhow::anyhow!("runtime_factory is required for spawn_tasks_headless")

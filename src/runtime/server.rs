@@ -1,3 +1,6 @@
+// Allow dead code for library-first API - Server types are for external consumers
+#![allow(dead_code)]
+
 //! HTTP server wrapper for the Runtime.
 //!
 //! This module provides the [`Server`] struct which wraps a [`Runtime`] and binds

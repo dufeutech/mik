@@ -844,7 +844,7 @@ impl fmt::Debug for RuntimeBackend {
             .field("id", &self.handler.id())
             .field("healthy", &self.is_healthy())
             .field("active_requests", &self.active_requests())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

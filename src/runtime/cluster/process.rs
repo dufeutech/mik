@@ -10,6 +10,10 @@
 
 use super::WorkerHandle;
 use anyhow::{Context, Result};
+#[cfg(unix)]
+use nix::sys::signal::{Signal, kill};
+#[cfg(unix)]
+use nix::unistd::Pid;
 use std::net::SocketAddr;
 use std::process::{Child, Command, Stdio};
 use tracing::{error, info};
@@ -147,10 +151,11 @@ pub fn shutdown_all_workers() {
             #[cfg(unix)]
             {
                 // Send SIGTERM for graceful shutdown
-                unsafe {
-                    libc::kill(pid as i32, libc::SIGTERM);
+                if let Err(e) = kill(Pid::from_raw(pid as i32), Signal::SIGTERM) {
+                    error!("Failed to send SIGTERM to worker process {}: {}", pid, e);
+                } else {
+                    info!("Sent SIGTERM to worker process {}", pid);
                 }
-                info!("Sent SIGTERM to worker process {}", pid);
             }
 
             #[cfg(not(unix))]

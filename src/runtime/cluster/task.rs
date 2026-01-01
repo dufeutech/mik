@@ -44,6 +44,7 @@ use tracing::info;
 /// For actual HTTP serving, use `spawn_workers_headless` and implement
 /// your own server layer, or use the Runtime's `handle_request` method
 /// directly with your own HTTP server.
+#[allow(clippy::unused_async)] // await is used in spawned tasks, not the outer function
 pub async fn spawn_workers<F>(count: usize, base_port: u16, factory: F) -> Result<Vec<WorkerHandle>>
 where
     F: Fn() -> Result<Runtime> + Send + Sync,

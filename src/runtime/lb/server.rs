@@ -312,66 +312,77 @@ impl LoadBalancerBuilder {
     }
 
     /// Set the address to listen on.
+    #[must_use]
     pub fn listen(mut self, addr: SocketAddr) -> Self {
         self.addr = addr;
         self
     }
 
     /// Add a backend by address string (e.g., "127.0.0.1:3001").
+    #[must_use]
     pub fn backend(mut self, address: impl Into<String>) -> Self {
         self.backends.push(address.into());
         self
     }
 
     /// Add multiple backends.
+    #[must_use]
     pub fn backends(mut self, addresses: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.backends.extend(addresses.into_iter().map(Into::into));
         self
     }
 
     /// Set the load balancing strategy.
+    #[must_use]
     pub fn strategy(mut self, strategy: LoadBalanceStrategy) -> Self {
         self.strategy = strategy;
         self
     }
 
     /// Set the health check path for HTTP health checks.
+    #[must_use]
     pub fn health_check_path(mut self, path: impl Into<String>) -> Self {
         self.health_check = Some(HealthCheckConfig::http(path));
         self
     }
 
     /// Set the full health check configuration.
+    #[must_use]
     pub fn health_check(mut self, config: Option<HealthCheckConfig>) -> Self {
         self.health_check = config;
         self
     }
 
     /// Set the request timeout.
+    #[must_use]
     pub fn request_timeout(mut self, timeout: Duration) -> Self {
         self.request_timeout = timeout;
         self
     }
 
     /// Set the maximum connections per backend.
+    #[must_use]
     pub fn max_connections_per_backend(mut self, max: usize) -> Self {
         self.max_connections_per_backend = max;
         self
     }
 
     /// Set the connection pool idle timeout.
+    #[must_use]
     pub fn pool_idle_timeout(mut self, timeout: Duration) -> Self {
         self.pool_idle_timeout = timeout;
         self
     }
 
     /// Set the TCP keepalive interval.
+    #[must_use]
     pub fn tcp_keepalive(mut self, interval: Duration) -> Self {
         self.tcp_keepalive = interval;
         self
     }
 
     /// Enable HTTP/2 only mode for backend connections.
+    #[must_use]
     pub fn http2_only(mut self, enabled: bool) -> Self {
         self.http2_only = enabled;
         self

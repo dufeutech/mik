@@ -105,6 +105,7 @@ impl ServicesBuilder {
     // ========================================================================
 
     /// Configures KV with a custom backend.
+    #[must_use]
     pub fn kv<B: KvBackend>(mut self, backend: B) -> Self {
         self.kv = Some(Box::new(backend));
         self.kv_disabled = false;
@@ -124,6 +125,7 @@ impl ServicesBuilder {
     }
 
     /// Configures KV with an in-memory backend.
+    #[must_use]
     pub fn kv_memory(mut self) -> Self {
         self.kv = Some(Box::new(KvMemoryBackend::new()));
         self.kv_disabled = false;
@@ -131,6 +133,7 @@ impl ServicesBuilder {
     }
 
     /// Disables the KV service.
+    #[must_use]
     pub fn kv_disabled(mut self) -> Self {
         self.kv = None;
         self.kv_disabled = true;
@@ -142,6 +145,7 @@ impl ServicesBuilder {
     // ========================================================================
 
     /// Configures SQL with a custom backend.
+    #[must_use]
     pub fn sql<B: SqlBackend>(mut self, backend: B) -> Self {
         self.sql = Some(Box::new(backend));
         self.sql_disabled = false;
@@ -173,6 +177,7 @@ impl ServicesBuilder {
     }
 
     /// Disables the SQL service.
+    #[must_use]
     pub fn sql_disabled(mut self) -> Self {
         self.sql = None;
         self.sql_disabled = true;
@@ -184,6 +189,7 @@ impl ServicesBuilder {
     // ========================================================================
 
     /// Configures Storage with a custom backend.
+    #[must_use]
     pub fn storage<B: StorageBackend>(mut self, backend: B) -> Self {
         self.storage = Some(Box::new(backend));
         self.storage_disabled = false;
@@ -203,6 +209,7 @@ impl ServicesBuilder {
     }
 
     /// Configures Storage with an in-memory backend.
+    #[must_use]
     pub fn storage_memory(mut self) -> Self {
         self.storage = Some(Box::new(MemoryStorageBackend::new()));
         self.storage_disabled = false;
@@ -210,6 +217,7 @@ impl ServicesBuilder {
     }
 
     /// Disables the Storage service.
+    #[must_use]
     pub fn storage_disabled(mut self) -> Self {
         self.storage = None;
         self.storage_disabled = true;

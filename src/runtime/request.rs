@@ -1,3 +1,6 @@
+// Allow dead code for library-first API - these types are for external consumers
+#![allow(dead_code)]
+
 //! Request and Response types for library-first API.
 //!
 //! This module provides framework-agnostic types for handling HTTP requests

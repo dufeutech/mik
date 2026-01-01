@@ -41,7 +41,7 @@
 //! # fn example() -> anyhow::Result<()> {
 //! let manifest = Manifest::default();
 //! let runtime = Runtime::builder()
-//!     .from_manifest(manifest)
+//!     .from_manifest(&manifest)
 //!     .build()?;
 //! # Ok(())
 //! # }
@@ -240,7 +240,7 @@ impl SystemConfig {
 /// # fn example() -> anyhow::Result<()> {
 /// let manifest = Manifest::default();
 /// let runtime = Runtime::builder()
-///     .from_manifest(manifest)
+///     .from_manifest(&manifest)
 ///     .build()?;
 /// # Ok(())
 /// # }
@@ -299,6 +299,7 @@ impl RuntimeBuilder {
     /// Returns an error if:
     /// - The manifest file cannot be read
     /// - The manifest contains invalid TOML syntax
+    #[allow(clippy::wrong_self_convention)] // Builder method, not a From impl
     pub fn from_manifest_file(self, path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         let content = std::fs::read_to_string(path)
@@ -331,11 +332,12 @@ impl RuntimeBuilder {
     /// };
     ///
     /// let runtime = Runtime::builder()
-    ///     .from_manifest(manifest)
+    ///     .from_manifest(&manifest)
     ///     .build()?;
     /// # Ok(())
     /// # }
     /// ```
+    #[allow(clippy::wrong_self_convention)] // Builder method, not a From impl
     pub fn from_manifest(self, manifest: &Manifest) -> Self {
         self.from_server_config(&manifest.server)
     }
@@ -343,6 +345,7 @@ impl RuntimeBuilder {
     /// Load configuration from a `ServerConfig` struct.
     ///
     /// This is useful when you only have the server section of the manifest.
+    #[allow(clippy::wrong_self_convention)] // Builder method, not a From impl
     pub fn from_server_config(mut self, server: &ServerConfig) -> Self {
         // Apply auto-detection for values that are 0 (meaning "auto")
         let (cache_size, max_cache_bytes, max_concurrent_requests, max_per_module_requests) =
@@ -499,6 +502,7 @@ impl RuntimeBuilder {
     }
 
     /// Try to load from mik.toml if it exists, otherwise use defaults.
+    #[allow(clippy::wrong_self_convention)] // Builder method, not a From impl
     pub fn from_manifest_file_or_default(self) -> Self {
         let path = std::path::Path::new("mik.toml");
         if path.exists()
@@ -673,7 +677,7 @@ mod tests {
     #[test]
     fn test_runtime_builder_from_manifest() {
         let manifest = Manifest::default();
-        let builder = RuntimeBuilder::new().from_manifest(manifest);
+        let builder = RuntimeBuilder::new().from_manifest(&manifest);
         assert_eq!(builder.config.port, constants::DEFAULT_PORT);
     }
 

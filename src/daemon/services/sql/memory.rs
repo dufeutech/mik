@@ -120,10 +120,7 @@ impl MemorySqlBackend {
     }
 
     /// Internal helper for synchronous atomic batch execution.
-    fn execute_batch_atomic_sync(
-        &self,
-        statements: Vec<(String, Vec<Value>)>,
-    ) -> Result<Vec<usize>> {
+    fn execute_batch_atomic_sync(&self, statements: &[(String, Vec<Value>)]) -> Result<Vec<usize>> {
         let conn = self
             .conn
             .lock()
@@ -135,7 +132,7 @@ impl MemorySqlBackend {
 
         let mut results = Vec::with_capacity(statements.len());
 
-        for (sql, params) in &statements {
+        for (sql, params) in statements {
             let rusqlite_params: Vec<rusqlite::types::Value> =
                 params.iter().map(Value::to_rusqlite).collect();
 
@@ -190,7 +187,7 @@ impl SqlBackend for MemorySqlBackend {
         statements: Vec<(String, Vec<Value>)>,
     ) -> Result<Vec<usize>> {
         let backend = self.clone();
-        tokio::task::spawn_blocking(move || backend.execute_batch_atomic_sync(statements))
+        tokio::task::spawn_blocking(move || backend.execute_batch_atomic_sync(&statements))
             .await
             .context("Task join error")?
     }

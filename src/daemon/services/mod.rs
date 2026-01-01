@@ -1,3 +1,7 @@
+// Allow dead code and unused imports for library-first API
+// These types are for external consumers, not yet integrated with CLI
+#![allow(dead_code, unused_imports)]
+
 //! Embedded services for the mik daemon.
 //!
 //! Provides built-in infrastructure services that WASM handlers can access

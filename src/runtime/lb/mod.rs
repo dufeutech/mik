@@ -1,3 +1,7 @@
+// Allow dead code and unused imports for library-first API
+// LB types are for external consumers, not yet integrated with CLI
+#![allow(dead_code, unused_imports)]
+
 //! L7 Load Balancer for mik runtime.
 //!
 //! This module provides an HTTP load balancer that distributes requests across
