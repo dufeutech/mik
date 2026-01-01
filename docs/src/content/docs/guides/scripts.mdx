@@ -3,7 +3,6 @@ title: Scripts & Orchestration
 description: JavaScript orchestration for composing WASM handlers
 ---
 
-
 mik supports JavaScript/TypeScript orchestration scripts that compose multiple WASM handlers into single endpoints.
 
 ## Why Scripts?
@@ -49,7 +48,7 @@ export default script(async (req, host) => {
   // Call auth handler
   const auth = await host.call("auth", {
     method: "POST",
-    body: { token: req.body.token }
+    body: { token: req.body.token },
   });
 
   if (auth.status !== 200) {
@@ -59,7 +58,7 @@ export default script(async (req, host) => {
   // Call orders handler
   const order = await host.call("orders", {
     method: "POST",
-    body: { user: auth.body.id, items: req.body.items }
+    body: { user: auth.body.id, items: req.body.items },
   });
 
   return ok(order.body);
@@ -75,12 +74,12 @@ export default script(async (req, host) => {
   // Call multiple handlers in parallel
   const [inventory, pricing] = await Promise.all([
     host.call("inventory", { body: { sku: req.body.sku } }),
-    host.call("pricing", { body: { sku: req.body.sku } })
+    host.call("pricing", { body: { sku: req.body.sku } }),
   ]);
 
   return ok({
     available: inventory.body.quantity > 0,
-    price: pricing.body.price
+    price: pricing.body.price,
   });
 });
 ```
@@ -146,11 +145,11 @@ curl -X POST http://localhost:3000/script/checkout \
 
 ```typescript
 interface Request {
-  method: string;      // GET, POST, PUT, DELETE, etc.
-  path: string;        // Request path
+  method: string; // GET, POST, PUT, DELETE, etc.
+  path: string; // Request path
   headers: Record<string, string>;
   query: Record<string, string>;
-  body: any;           // Parsed JSON body
+  body: any; // Parsed JSON body
 }
 ```
 
@@ -158,12 +157,15 @@ interface Request {
 
 ```typescript
 interface Host {
-  call(handler: string, options?: {
-    method?: string;   // Default: GET
-    path?: string;     // Default: /
-    headers?: Record<string, string>;
-    body?: any;
-  }): Promise<Response>;
+  call(
+    handler: string,
+    options?: {
+      method?: string; // Default: GET
+      path?: string; // Default: /
+      headers?: Record<string, string>;
+      body?: any;
+    }
+  ): Promise<Response>;
 }
 ```
 
@@ -171,25 +173,25 @@ interface Host {
 
 ```typescript
 // Success response (status: 200)
-ok({ data: "value" })
+ok({ data: "value" });
 
 // Error response (RFC 7807)
 error({
   status: 400,
   title: "Bad Request",
-  detail: "Missing required field"
-})
+  detail: "Missing required field",
+});
 ```
 
 ### Error Codes
 
-| Code | Description |
-|------|-------------|
-| `MODULE_NOT_FOUND` | Handler doesn't exist |
-| `CIRCUIT_OPEN` | Circuit breaker is open |
-| `RATE_LIMITED` | Too many requests |
-| `TIMEOUT` | Execution timeout |
-| `HANDLER_ERROR` | Handler returned error |
+| Code               | Description             |
+| ------------------ | ----------------------- |
+| `MODULE_NOT_FOUND` | Handler doesn't exist   |
+| `CIRCUIT_OPEN`     | Circuit breaker is open |
+| `RATE_LIMITED`     | Too many requests       |
+| `TIMEOUT`          | Execution timeout       |
+| `HANDLER_ERROR`    | Handler returned error  |
 
 ## Testing Scripts
 
@@ -200,8 +202,8 @@ import checkout from "./checkout";
 
 test("creates order", async () => {
   const host = createTestHost({
-    "auth": async () => ({ status: 200, body: { id: "user-1" } }),
-    "orders": async () => ({ status: 201, body: { orderId: "123" } }),
+    auth: async () => ({ status: 200, body: { id: "user-1" } }),
+    orders: async () => ({ status: 201, body: { orderId: "123" } }),
   });
 
   const req = createTestRequest({ body: { token: "valid", items: [] } });

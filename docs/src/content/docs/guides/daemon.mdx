@@ -38,6 +38,7 @@ curl -H "X-API-Key: your-secret-key" http://localhost:9999/instances
 ```
 
 **Exempt endpoints** (always accessible for monitoring):
+
 - `GET /health`
 - `GET /metrics`
 
@@ -378,17 +379,17 @@ GET /metrics
 
 Available metrics:
 
-| Metric | Description |
-|--------|-------------|
-| `mik_http_requests_total` | Total HTTP requests by path and status |
-| `mik_http_request_duration_seconds` | Request latency histogram |
-| `mik_instance_count` | Running/stopped/crashed instances |
-| `mik_instance_uptime_seconds` | Instance uptime |
-| `mik_kv_operations_total` | KV operations by type |
-| `mik_sql_queries_total` | SQL queries by type |
-| `mik_storage_operations_total` | Storage operations by type |
-| `mik_cron_executions_total` | Cron job executions |
-| `mik_cron_execution_duration_seconds` | Cron job duration |
+| Metric                                | Description                            |
+| ------------------------------------- | -------------------------------------- |
+| `mik_http_requests_total`             | Total HTTP requests by path and status |
+| `mik_http_request_duration_seconds`   | Request latency histogram              |
+| `mik_instance_count`                  | Running/stopped/crashed instances      |
+| `mik_instance_uptime_seconds`         | Instance uptime                        |
+| `mik_kv_operations_total`             | KV operations by type                  |
+| `mik_sql_queries_total`               | SQL queries by type                    |
+| `mik_storage_operations_total`        | Storage operations by type             |
+| `mik_cron_executions_total`           | Cron job executions                    |
+| `mik_cron_execution_duration_seconds` | Cron job duration                      |
 
 ---
 
@@ -448,12 +449,14 @@ flowchart TB
 ## When to Use
 
 **Use the daemon for:**
+
 - Local development
 - Simple single-node deployments
 - Prototyping and testing
 - When you need an all-in-one solution
 
 **Use external services (mikcar) for:**
+
 - Production at scale
 - Multi-node deployments
 - When you need Redis/Postgres/S3 specifically

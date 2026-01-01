@@ -11,12 +11,12 @@ mik is a batteries-included CLI for WASI HTTP projects. It handles building, com
 
 ## Why mik?
 
-| Challenge | mik Solution |
-|-----------|--------------|
-| Complex WASI runtimes | Single binary with embedded runtime |
-| No built-in reliability | Circuit breaker, rate limiting, caching |
-| Orchestration requires Rust | JavaScript/TypeScript via rquickjs |
-| Multi-module scenarios | Route multiple handlers from one server |
+| Challenge                   | mik Solution                            |
+| --------------------------- | --------------------------------------- |
+| Complex WASI runtimes       | Single binary with embedded runtime     |
+| No built-in reliability     | Circuit breaker, rate limiting, caching |
+| Orchestration requires Rust | JavaScript/TypeScript via rquickjs      |
+| Multi-module scenarios      | Route multiple handlers from one server |
 
 ## Key Features
 
@@ -85,14 +85,14 @@ mik run   # Uses mik.toml configuration
 modules = "modules/"
 ```
 
-| Route | Handler |
-|-------|---------|
-| `/run/auth/*` | `modules/auth.wasm` |
-| `/run/users/*` | `modules/users.wasm` |
-| `/run/orders/*` | `modules/orders.wasm` |
-| `/static/*` | Static files (if configured) |
-| `/health` | Health check |
-| `/metrics` | Prometheus metrics |
+| Route           | Handler                      |
+| --------------- | ---------------------------- |
+| `/run/auth/*`   | `modules/auth.wasm`          |
+| `/run/users/*`  | `modules/users.wasm`         |
+| `/run/orders/*` | `modules/orders.wasm`        |
+| `/static/*`     | Static files (if configured) |
+| `/health`       | Health check                 |
+| `/metrics`      | Prometheus metrics           |
 
 ### Single Component Mode
 

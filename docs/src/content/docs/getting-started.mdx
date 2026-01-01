@@ -39,6 +39,7 @@ mik run
 ```
 
 Test your API:
+
 ```bash
 curl http://localhost:3000/run/my-api/
 ```
@@ -204,6 +205,7 @@ mik run
 ```
 
 Output:
+
 ```
 Starting server on http://127.0.0.1:3000
 Routes: /run/my-api/* -> component
@@ -248,23 +250,23 @@ flowchart LR
 
 ### Derive Macros
 
-| Macro | Purpose |
-|-------|---------|
-| `#[derive(Type)]` | JSON body/response with automatic parsing |
-| `#[derive(Path)]` | Typed URL path parameters (`{id}`) |
+| Macro              | Purpose                                     |
+| ------------------ | ------------------------------------------- |
+| `#[derive(Type)]`  | JSON body/response with automatic parsing   |
+| `#[derive(Path)]`  | Typed URL path parameters (`{id}`)          |
 | `#[derive(Query)]` | Typed query string parameters with defaults |
 
 ### Response Macros
 
-| Macro | Purpose |
-|-------|---------|
-| `routes!` | Define routes with typed inputs |
-| `ok!` | Return JSON with 200 |
-| `created!` | Return JSON with 201 and Location header |
-| `no_content!` | Return 204 No Content |
-| `error!` | Return error response |
-| `guard!` | Early return if condition fails |
-| `ensure!` | Unwrap Option/Result or return error |
+| Macro         | Purpose                                  |
+| ------------- | ---------------------------------------- |
+| `routes!`     | Define routes with typed inputs          |
+| `ok!`         | Return JSON with 200                     |
+| `created!`    | Return JSON with 201 and Location header |
+| `no_content!` | Return 204 No Content                    |
+| `error!`      | Return error response                    |
+| `guard!`      | Early return if condition fails          |
+| `ensure!`     | Unwrap Option/Result or return error     |
 
 ## Configuration (mik.toml)
 

@@ -34,14 +34,14 @@ flowchart TB
 
 ## Components
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| HTTP Server | hyper 1.x | Async HTTP/1.1, graceful shutdown |
-| WASM Runtime | wasmtime 40 | WASI Preview 2 execution |
-| Script Runner | rquickjs | JavaScript orchestration |
-| Cache | moka | LRU module caching |
-| Circuit Breaker | custom | Failure isolation |
-| Rate Limiter | governor | Request throttling |
+| Component       | Technology  | Purpose                           |
+| --------------- | ----------- | --------------------------------- |
+| HTTP Server     | hyper 1.x   | Async HTTP/1.1, graceful shutdown |
+| WASM Runtime    | wasmtime 40 | WASI Preview 2 execution          |
+| Script Runner   | rquickjs    | JavaScript orchestration          |
+| Cache           | moka        | LRU module caching                |
+| Circuit Breaker | custom      | Failure isolation                 |
+| Rate Limiter    | governor    | Request throttling                |
 
 ## Request Flow
 
@@ -109,13 +109,13 @@ stateDiagram-v2
 
 All handler routes use `/run/<module>/*` pattern:
 
-| Route | Handler |
-|-------|---------|
-| `/run/auth/*` | `modules/auth.wasm` |
-| `/run/users/*` | `modules/users.wasm` |
+| Route                | Handler               |
+| -------------------- | --------------------- |
+| `/run/auth/*`        | `modules/auth.wasm`   |
+| `/run/users/*`       | `modules/users.wasm`  |
 | `/script/checkout/*` | `scripts/checkout.js` |
-| `/health` | Built-in health check |
-| `/metrics` | Prometheus metrics |
+| `/health`            | Built-in health check |
+| `/metrics`           | Prometheus metrics    |
 
 ## Project Structure
 

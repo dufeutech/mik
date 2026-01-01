@@ -7,11 +7,11 @@ mik uses a layered capability model to isolate WASM modules from infrastructure.
 
 ## Capability Layers
 
-| Layer | Network Access | Purpose |
-|-------|----------------|---------|
-| **Scripts** | None - `host.call()` only | Orchestration |
-| **Handlers** | HTTP to sidecars only | Business logic |
-| **Sidecars** | Native (full access) | Infrastructure adapters |
+| Layer        | Network Access            | Purpose                 |
+| ------------ | ------------------------- | ----------------------- |
+| **Scripts**  | None - `host.call()` only | Orchestration           |
+| **Handlers** | HTTP to sidecars only     | Business logic          |
+| **Sidecars** | Native (full access)      | Infrastructure adapters |
 
 ```mermaid
 flowchart LR
@@ -29,36 +29,36 @@ flowchart LR
 
 These capabilities are granted to WASM handlers:
 
-| Capability | WASI Interface | Rationale |
-|------------|----------------|-----------|
-| Wall Clock | `wasi:clocks/wall-clock` | Timestamps, TTL calculations |
-| Monotonic Clock | `wasi:clocks/monotonic-clock` | Performance timing |
-| Random | `wasi:random/random` | UUIDs, cryptographic operations |
-| Logging (stderr) | `wasi:cli/stderr` | Observability |
-| Environment | `wasi:cli/environment` | Configuration injection |
-| HTTP Client | `wasi:http/outgoing-handler` | Sidecar communication |
+| Capability       | WASI Interface                | Rationale                       |
+| ---------------- | ----------------------------- | ------------------------------- |
+| Wall Clock       | `wasi:clocks/wall-clock`      | Timestamps, TTL calculations    |
+| Monotonic Clock  | `wasi:clocks/monotonic-clock` | Performance timing              |
+| Random           | `wasi:random/random`          | UUIDs, cryptographic operations |
+| Logging (stderr) | `wasi:cli/stderr`             | Observability                   |
+| Environment      | `wasi:cli/environment`        | Configuration injection         |
+| HTTP Client      | `wasi:http/outgoing-handler`  | Sidecar communication           |
 
 ## Denied Capabilities
 
 These are **never granted**:
 
-| Capability | Reason |
-|------------|--------|
-| Filesystem access | Breaks isolation, data exfiltration risk |
-| Raw sockets | Bypasses HTTP policy enforcement |
-| Process spawning | Sandbox escape |
-| Direct database drivers | Credential exposure |
+| Capability              | Reason                                   |
+| ----------------------- | ---------------------------------------- |
+| Filesystem access       | Breaks isolation, data exfiltration risk |
+| Raw sockets             | Bypasses HTTP policy enforcement         |
+| Process spawning        | Sandbox escape                           |
+| Direct database drivers | Credential exposure                      |
 
 ## Runtime Protections
 
-| Threat | Mitigation |
-|--------|------------|
-| Path traversal | Input sanitization, path validation |
-| DoS via large bodies | Configurable body size limits |
-| DoS via slow handlers | Execution timeouts, circuit breaker |
-| Resource exhaustion | Rate limiting (global + per-module) |
-| Unbounded allocations | LRU cache with byte limits |
-| Handler failures | Circuit breaker with half-open recovery |
+| Threat                | Mitigation                              |
+| --------------------- | --------------------------------------- |
+| Path traversal        | Input sanitization, path validation     |
+| DoS via large bodies  | Configurable body size limits           |
+| DoS via slow handlers | Execution timeouts, circuit breaker     |
+| Resource exhaustion   | Rate limiting (global + per-module)     |
+| Unbounded allocations | LRU cache with byte limits              |
+| Handler failures      | Circuit breaker with half-open recovery |
 
 ## Configuration
 
@@ -101,6 +101,7 @@ http_allowed = ["*"]
 ### Scripts Can't Make Network Requests
 
 Scripts can only call handlers via `host.call()`. This prevents:
+
 - Scripts from bypassing handler logic
 - Direct database access from orchestration layer
 - Credential leakage through script injection
@@ -108,6 +109,7 @@ Scripts can only call handlers via `host.call()`. This prevents:
 ### Handlers Only See HTTP
 
 Handlers use `wasi:http/outgoing-handler` to call sidecars. Benefits:
+
 - No database drivers in WASM (smaller binaries)
 - Credentials stay in sidecars
 - All requests are auditable
@@ -116,6 +118,7 @@ Handlers use `wasi:http/outgoing-handler` to call sidecars. Benefits:
 ### Sidecars Hold Credentials
 
 Sidecars are native processes with full access. They:
+
 - Own database connection pools
 - Enforce authentication and rate limits
 - Translate HTTP to infrastructure protocols

@@ -27,6 +27,7 @@ mik new <NAME> [OPTIONS]
 | `--lib` | Initialize as a library (default: handler) |
 
 **Example:**
+
 ```bash
 mik new my-api
 cd my-api
@@ -35,6 +36,7 @@ mik run
 ```
 
 **Generated structure:**
+
 ```
 my-api/
 ├── Cargo.toml          # Component package
@@ -65,6 +67,7 @@ mik build [OPTIONS]
 | `-c, --compose` | Compose with HTTP bridge |
 
 **Examples:**
+
 ```bash
 # Debug build
 mik build
@@ -77,6 +80,7 @@ mik build -rc
 ```
 
 **Output:**
+
 - `target/wasm32-wasip2/release/<name>.wasm` - Compiled handler
 - `dist/<name>-composed.wasm` - Composed component (with `-c`)
 
@@ -106,25 +110,31 @@ mik run [COMPONENT] [OPTIONS]
 All modes use consistent `/run/<module>/*` routing.
 
 **Multi-module mode** (default):
+
 ```bash
 mik run
 ```
+
 - Uses `[server].modules` directory from mik.toml
 - Routes: `/run/<module>/*` -> `modules/<module>.wasm`
 
 **Single component mode**:
+
 ```bash
 mik run dist/my-api-composed.wasm
 ```
+
 - Routes: `/run/<name>/*` -> component (name from filename)
 
 **Multi-worker mode**:
+
 ```bash
 mik run --workers 4    # 4 workers on ports 3000-3003
 mik run --workers 0    # Auto-detect (one per CPU core)
 ```
 
 **Example output:**
+
 ```
 Starting server on http://127.0.0.1:3000
 Routes: /run/my-api/* -> component
@@ -150,6 +160,7 @@ mik add <PACKAGE> [OPTIONS]
 ```
 
 **Package formats:**
+
 ```
 user/repo              # OCI: ghcr.io/user/repo:latest
 user/repo:tag          # OCI: ghcr.io/user/repo:tag
@@ -164,6 +175,7 @@ user/repo:tag          # OCI: ghcr.io/user/repo:tag
 | `--branch <BRANCH>` | Git branch |
 
 **Examples:**
+
 ```bash
 # Add from OCI registry
 mik add dufeut/router
@@ -201,6 +213,7 @@ mik sync
 Downloads missing dependencies and removes stale modules from `modules/`.
 
 **When to use:**
+
 - After `git clone` to download all dependencies
 - After switching branches
 - To clean up unused modules
@@ -258,6 +271,7 @@ mik daemon [OPTIONS]
 | `--port <PORT>` | API port (default: 9999) |
 
 The daemon exposes:
+
 - Instance management: `/instances/*`
 - KV store: `/kv/*`
 - SQL database: `/sql/*`
@@ -306,6 +320,7 @@ mik ps
 ```
 
 **Example output:**
+
 ```
 NAME         PORT   PID      STATUS     UPTIME
 ────────────────────────────────────────────────────────
@@ -333,13 +348,13 @@ mik logs [NAME] [OPTIONS]
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `PORT` | Override server port |
-| `HOST` | Bind address (default: 127.0.0.1) |
-| `RUST_LOG` | Log level (error, warn, info, debug, trace) |
-| `MIK_HOT_RELOAD` | Enable hot reload mode |
-| `MIK_API_KEY` | API key for daemon authentication (optional) |
+| Variable         | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `PORT`           | Override server port                         |
+| `HOST`           | Bind address (default: 127.0.0.1)            |
+| `RUST_LOG`       | Log level (error, warn, info, debug, trace)  |
+| `MIK_HOT_RELOAD` | Enable hot reload mode                       |
+| `MIK_API_KEY`    | API key for daemon authentication (optional) |
 
 ---
 

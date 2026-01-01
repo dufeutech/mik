@@ -35,22 +35,22 @@ utils = { path = "../utils" }
 
 ## [project] Section
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | required | Project name (used for WASM output) |
-| `version` | string | `"0.1.0"` | Semantic version |
-| `description` | string | - | Project description |
+| Field         | Type   | Default   | Description                         |
+| ------------- | ------ | --------- | ----------------------------------- |
+| `name`        | string | required  | Project name (used for WASM output) |
+| `version`     | string | `"0.1.0"` | Semantic version                    |
+| `description` | string | -         | Project description                 |
 
 ## [server] Section
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `port` | number | `3000` | HTTP server port |
-| `modules` | string | `"modules/"` | WASM handlers directory |
-| `scripts` | string | - | JS/TS scripts directory (enables orchestration) |
-| `static` | string | - | Static files directory |
-| `cache_size` | number | `100` | Max cached modules |
-| `http_allowed` | array | `[]` | Allowed outgoing HTTP hosts |
+| Field          | Type   | Default      | Description                                     |
+| -------------- | ------ | ------------ | ----------------------------------------------- |
+| `port`         | number | `3000`       | HTTP server port                                |
+| `modules`      | string | `"modules/"` | WASM handlers directory                         |
+| `scripts`      | string | -            | JS/TS scripts directory (enables orchestration) |
+| `static`       | string | -            | Static files directory                          |
+| `cache_size`   | number | `100`        | Max cached modules                              |
+| `http_allowed` | array  | `[]`         | Allowed outgoing HTTP hosts                     |
 
 ### http_allowed Patterns
 
@@ -73,11 +73,12 @@ http_allowed = ["api.example.com", "*.supabase.co", "github.com"]
 
 ## [composition] Section
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| Field          | Type    | Default | Description                                |
+| -------------- | ------- | ------- | ------------------------------------------ |
 | `http_handler` | boolean | `false` | Auto-download and compose with HTTP bridge |
 
 When `http_handler = true`, `mik build -c` automatically:
+
 1. Downloads the bridge from `ghcr.io/dufeut/mik-sdk-bridge`
 2. Composes your handler with the bridge using WAC
 

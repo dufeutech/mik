@@ -12,6 +12,7 @@ Handler (WASM) ──HTTP──> Sidecar (native) ──> Database
 ```
 
 Sidecars are native processes that:
+
 - Hold database credentials securely
 - Translate HTTP requests to infrastructure protocols
 - Enforce rate limits, auth, and auditing
@@ -19,10 +20,10 @@ Sidecars are native processes that:
 
 ## Transport Options
 
-| Transport | Latency | Use Case |
-|-----------|---------|----------|
-| TCP HTTP | ~100-500μs | Remote sidecars, Kubernetes |
-| Unix Socket HTTP | ~50-150μs | Local sidecars, same machine |
+| Transport        | Latency    | Use Case                     |
+| ---------------- | ---------- | ---------------------------- |
+| TCP HTTP         | ~100-500μs | Remote sidecars, Kubernetes  |
+| Unix Socket HTTP | ~50-150μs  | Local sidecars, same machine |
 
 **For local deployments, use Unix sockets for ~2x lower latency** while keeping the same HTTP protocol.
 
@@ -65,22 +66,22 @@ The sidecar URL comes from environment variables injected by the runtime.
 
 ## Deployment Recommendations
 
-| Environment | Transport | Why |
-|-------------|-----------|-----|
-| Development | TCP (`localhost:8080`) | Simplicity, easy debugging |
-| Production (same host) | Unix sockets | ~2x lower latency |
-| Production (Kubernetes) | TCP to service | Cross-pod communication |
+| Environment             | Transport              | Why                        |
+| ----------------------- | ---------------------- | -------------------------- |
+| Development             | TCP (`localhost:8080`) | Simplicity, easy debugging |
+| Production (same host)  | Unix sockets           | ~2x lower latency          |
+| Production (Kubernetes) | TCP to service         | Cross-pod communication    |
 
 ## Why HTTP (not ZeroMQ or other IPC)?
 
 We evaluated faster alternatives:
 
-| Option | Latency | Trade-off |
-|--------|---------|-----------|
-| ZeroMQ | ~10-50μs | Requires ZMQ client in WASM, breaks handler portability |
-| Shared Memory | ~1-5μs | Complex, not WASM-friendly, security concerns |
-| gRPC | ~50-150μs | Heavy dependency, similar speed to Unix sockets |
-| Cap'n Proto | ~10-30μs | Niche ecosystem, breaks portability |
+| Option        | Latency   | Trade-off                                               |
+| ------------- | --------- | ------------------------------------------------------- |
+| ZeroMQ        | ~10-50μs  | Requires ZMQ client in WASM, breaks handler portability |
+| Shared Memory | ~1-5μs    | Complex, not WASM-friendly, security concerns           |
+| gRPC          | ~50-150μs | Heavy dependency, similar speed to Unix sockets         |
+| Cap'n Proto   | ~10-30μs  | Niche ecosystem, breaks portability                     |
 
 **Key insight:** Actual work (DB queries, external APIs) dominates latency. Saving 50μs on transport doesn't matter when the DB query takes 5ms.
 

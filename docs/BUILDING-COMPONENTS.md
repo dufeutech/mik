@@ -130,27 +130,33 @@ Rust produces compact components. Two options:
 ### Option 1: mik-sdk (Recommended)
 
 ```bash
-cargo init my-handler && cd my-handler
-mik init
-mik add mik-sdk/router
+mik new my-handler
+cd my-handler
 ```
 
 ```rust
 // src/lib.rs
+#[allow(warnings)]
+mod bindings;
+
+use bindings::exports::mik::core::handler::{self, Guest, Response};
 use mik_sdk::prelude::*;
 
-#[handler]
-fn handle(req: Request) -> Response {
-    Response::json(&serde_json::json!({
+routes! {
+    GET "/" | "" => hello,
+}
+
+fn hello(_req: &Request) -> Response {
+    ok!({
         "message": "Hello from Rust!",
         "lang": "rust"
-    }))
+    })
 }
 ```
 
 ```bash
-mik build --release --compose
-# Output: target/wasm32-wasip2/release/composed.wasm
+mik build -rc
+# Output: dist/my-handler-composed.wasm
 ```
 
 ### Option 2: wit-bindgen (Direct)
