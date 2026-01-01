@@ -12,17 +12,23 @@ use axum::{
 use super::super::types::{KvGetResponse, KvListQuery, KvListResponse, KvSetRequest};
 use super::super::{AppError, SharedState, metrics};
 
+/// Helper to get KV store or return 503 if disabled.
+async fn get_kv(state: &SharedState) -> Result<crate::daemon::services::kv::KvStore, AppError> {
+    let state = state.read().await;
+    state.kv.clone().ok_or_else(|| {
+        AppError::ServiceUnavailable(
+            "KV service is disabled. Enable it in ~/.mik/daemon.toml".to_string(),
+        )
+    })
+}
+
 /// GET /kv - List all keys with optional prefix filter.
 pub(crate) async fn kv_list(
     State(state): State<SharedState>,
     Query(query): Query<KvListQuery>,
 ) -> Result<Json<KvListResponse>, AppError> {
     metrics::record_kv_operation("list");
-    // Clone KV store and drop lock before async operation
-    let kv = {
-        let state = state.read().await;
-        state.kv.clone()
-    };
+    let kv = get_kv(&state).await?;
     let keys = kv.list_keys_async(query.prefix).await?;
     Ok(Json(KvListResponse { keys }))
 }
@@ -33,11 +39,7 @@ pub(crate) async fn kv_get(
     Path(key): Path<String>,
 ) -> Result<Json<KvGetResponse>, AppError> {
     metrics::record_kv_operation("get");
-    // Clone KV store and drop lock before async operation
-    let kv = {
-        let state = state.read().await;
-        state.kv.clone()
-    };
+    let kv = get_kv(&state).await?;
     let bytes = kv
         .get_async(key.clone())
         .await?
@@ -56,11 +58,7 @@ pub(crate) async fn kv_set(
     Json(req): Json<KvSetRequest>,
 ) -> Result<StatusCode, AppError> {
     metrics::record_kv_operation("set");
-    // Clone KV store and drop lock before async operation
-    let kv = {
-        let state = state.read().await;
-        state.kv.clone()
-    };
+    let kv = get_kv(&state).await?;
     let value_bytes = req.value.into_bytes();
 
     match req.ttl {
@@ -77,11 +75,7 @@ pub(crate) async fn kv_delete(
     Path(key): Path<String>,
 ) -> Result<StatusCode, AppError> {
     metrics::record_kv_operation("delete");
-    // Clone KV store and drop lock before async operation
-    let kv = {
-        let state = state.read().await;
-        state.kv.clone()
-    };
+    let kv = get_kv(&state).await?;
     kv.delete_async(key).await?;
     Ok(StatusCode::NO_CONTENT)
 }

@@ -7,7 +7,7 @@ use std::time::Instant;
 use axum::{Json, extract::State};
 
 use crate::daemon::metrics;
-use crate::daemon::services::sql::Value as SqlValue;
+use crate::daemon::services::sql::{SqlService, Value as SqlValue};
 
 use super::super::{
     AppError, SharedState,
@@ -16,6 +16,16 @@ use super::super::{
         SqlQueryResponse,
     },
 };
+
+/// Helper to get SQL service or return 503 if disabled.
+async fn get_sql(state: &SharedState) -> Result<SqlService, AppError> {
+    let state = state.read().await;
+    state.sql.clone().ok_or_else(|| {
+        AppError::ServiceUnavailable(
+            "SQL service is disabled. Enable it in ~/.mik/daemon.toml".to_string(),
+        )
+    })
+}
 
 // =============================================================================
 // Conversion Helpers
@@ -67,11 +77,7 @@ pub(crate) async fn sql_query(
     Json(req): Json<SqlQueryRequest>,
 ) -> Result<Json<SqlQueryResponse>, AppError> {
     let start = Instant::now();
-    // Clone SQL service and drop lock before async operation
-    let sql = {
-        let state = state.read().await;
-        state.sql.clone()
-    };
+    let sql = get_sql(&state).await?;
     let params: Vec<SqlValue> = req.params.iter().map(json_to_sql_value).collect();
 
     let rows = sql.query_async(req.sql, params).await?;
@@ -97,11 +103,7 @@ pub(crate) async fn sql_execute(
     Json(req): Json<SqlExecuteRequest>,
 ) -> Result<Json<SqlExecuteResponse>, AppError> {
     let start = Instant::now();
-    // Clone SQL service and drop lock before async operation
-    let sql = {
-        let state = state.read().await;
-        state.sql.clone()
-    };
+    let sql = get_sql(&state).await?;
     let params: Vec<SqlValue> = req.params.iter().map(json_to_sql_value).collect();
 
     let rows_affected = sql.execute_async(req.sql, params).await?;
@@ -121,11 +123,7 @@ pub(crate) async fn sql_batch(
     Json(req): Json<SqlBatchRequest>,
 ) -> Result<Json<SqlBatchResponse>, AppError> {
     let start = Instant::now();
-    // Clone SQL service and drop lock before async operation
-    let sql = {
-        let state = state.read().await;
-        state.sql.clone()
-    };
+    let sql = get_sql(&state).await?;
 
     // Convert statements to (sql, params) tuples for atomic execution
     let statements: Vec<(String, Vec<SqlValue>)> = req

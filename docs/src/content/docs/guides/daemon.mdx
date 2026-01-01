@@ -115,6 +115,90 @@ curl -H "X-API-Key: your-secret-key" http://localhost:9919/instances
 
 ---
 
+## Daemon Configuration
+
+The daemon can be configured globally via `~/.mik/daemon.toml`. This configuration is separate from per-project `mik.toml` files and applies to the daemon regardless of which project is running.
+
+### Configuration File
+
+Create `~/.mik/daemon.toml`:
+
+```toml
+[daemon]
+port = 9919                  # Daemon API port (default: 9919)
+
+[services]
+kv_enabled = true            # Enable KV service (default: true)
+sql_enabled = true           # Enable SQL service (default: true)
+storage_enabled = true       # Enable Storage service (default: true)
+```
+
+If the file doesn't exist, all defaults are used (all services enabled, port 9919).
+
+### Disabling Services
+
+For security-conscious deployments, you can disable services you don't need:
+
+```toml
+[daemon]
+port = 9919
+
+[services]
+kv_enabled = true
+sql_enabled = false      # Disable SQL - reduces attack surface
+storage_enabled = false  # Disable Storage
+```
+
+When a service is disabled:
+- The service is **not initialized** at startup (saves resources)
+- Requests to disabled service endpoints return **503 Service Unavailable**:
+
+```json
+{"error": "SQL service is disabled. Enable it in ~/.mik/daemon.toml"}
+```
+
+### Startup Output
+
+When the daemon starts, it shows which services are enabled:
+
+```
+Starting mik daemon on port 9919...
+API endpoint: http://127.0.0.1:9919
+
+Endpoints:
+  Instances:  /instances, /instances/:name, ...
+  Cron:       /cron, /cron/:name, ...
+  Services:   /kv, /storage
+  System:     /health, /version, /metrics
+
+Disabled services:
+  - SQL service
+  Edit ~/.mik/daemon.toml to enable them
+```
+
+### CLI Port Override
+
+The CLI `--port` flag overrides the config file port:
+
+```bash
+# Uses config port (or default 9919)
+mik daemon
+
+# Overrides config - uses port 8080
+mik daemon --port 8080
+```
+
+### Use Cases
+
+| Scenario | Configuration |
+|----------|---------------|
+| Full development | All services enabled (default) |
+| Stateless handlers | Disable SQL, Storage - KV only for sessions |
+| Read-only deployment | Disable all services |
+| Docker/container | Set consistent port across environments |
+
+---
+
 ## Instance Management
 
 Manage WASM instances via REST API or CLI.

@@ -114,9 +114,9 @@ enum Commands {
     /// Start the daemon (internal, auto-managed)
     #[command(hide = true)]
     Daemon {
-        /// Port for the daemon API
-        #[arg(short, long, default_value = "9919")]
-        port: u16,
+        /// Port for the daemon API (overrides ~/.mik/daemon.toml)
+        #[arg(short, long)]
+        port: Option<u16>,
     },
     /// List running WASM instances
     ///

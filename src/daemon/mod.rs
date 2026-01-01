@@ -3,6 +3,7 @@
 //! Provides persistent state storage, process management, and HTTP API
 //! for Docker-like instance lifecycle management.
 
+pub mod config;
 pub mod cron;
 pub mod http;
 pub mod metrics;

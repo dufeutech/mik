@@ -81,6 +81,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 
+use crate::daemon::config::DaemonConfig;
 use crate::daemon::cron::CronScheduler;
 use crate::daemon::metrics;
 #[cfg(feature = "otlp")]
@@ -138,9 +139,9 @@ use handlers::{
 /// Shared application state for HTTP handlers.
 pub(crate) struct AppState {
     store: StateStore,
-    kv: KvStore,
-    sql: SqlService,
-    storage: StorageService,
+    kv: Option<KvStore>,
+    sql: Option<SqlService>,
+    storage: Option<StorageService>,
     cron: CronScheduler,
 }
 
@@ -156,7 +157,10 @@ type SharedState = Arc<RwLock<AppState>>;
 ///
 /// The server provides REST endpoints for managing WASM instances and
 /// embedded services. See module-level documentation for endpoint details.
-pub async fn serve(port: u16, state_path: PathBuf) -> Result<()> {
+///
+/// Services can be selectively enabled/disabled via `DaemonConfig`.
+/// Disabled services return 503 Service Unavailable.
+pub async fn serve(port: u16, state_path: PathBuf, config: DaemonConfig) -> Result<()> {
     use crate::daemon::services::get_data_dir;
 
     let data_dir = get_data_dir().context("Failed to get data directory")?;
@@ -174,11 +178,30 @@ pub async fn serve(port: u16, state_path: PathBuf) -> Result<()> {
 
     let store = StateStore::open(&state_path).context("Failed to open state database")?;
 
-    // Initialize embedded services
-    let kv = KvStore::open(data_dir.join("kv.redb")).context("Failed to open KV store")?;
-    let sql = SqlService::open(data_dir.join("sql.db")).context("Failed to open SQL database")?;
-    let storage =
-        StorageService::open(data_dir.join("storage")).context("Failed to open storage service")?;
+    // Initialize embedded services (conditionally based on config)
+    let kv = if config.services.kv_enabled {
+        Some(KvStore::open(data_dir.join("kv.redb")).context("Failed to open KV store")?)
+    } else {
+        tracing::info!("KV service disabled by configuration");
+        None
+    };
+
+    let sql = if config.services.sql_enabled {
+        Some(SqlService::open(data_dir.join("sql.db")).context("Failed to open SQL database")?)
+    } else {
+        tracing::info!("SQL service disabled by configuration");
+        None
+    };
+
+    let storage = if config.services.storage_enabled {
+        Some(
+            StorageService::open(data_dir.join("storage"))
+                .context("Failed to open storage service")?,
+        )
+    } else {
+        tracing::info!("Storage service disabled by configuration");
+        None
+    };
 
     // Initialize cron scheduler
     let cron = CronScheduler::new()
@@ -730,6 +753,7 @@ pub(crate) enum AppError {
     BadRequest(String),
     Conflict(String),
     Internal(String),
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for AppError {
@@ -739,6 +763,7 @@ impl IntoResponse for AppError {
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             Self::Conflict(msg) => (StatusCode::CONFLICT, msg),
             Self::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            Self::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg),
         };
 
         (status, Json(ErrorResponse { error: message })).into_response()
@@ -780,9 +805,9 @@ mod tests {
         let data_dir: &'static std::path::Path = Box::leak(Box::new(data_dir));
 
         let store = StateStore::open(data_dir.join("state.redb")).unwrap();
-        let kv = KvStore::open(data_dir.join("kv.redb")).unwrap();
-        let sql = SqlService::open(data_dir.join("sql.db")).unwrap();
-        let storage = StorageService::open(data_dir.join("storage")).unwrap();
+        let kv = Some(KvStore::open(data_dir.join("kv.redb")).unwrap());
+        let sql = Some(SqlService::open(data_dir.join("sql.db")).unwrap());
+        let storage = Some(StorageService::open(data_dir.join("storage")).unwrap());
         let cron = CronScheduler::new().await.unwrap();
 
         let app_state = Arc::new(RwLock::new(AppState {
@@ -1372,9 +1397,9 @@ mod tests {
         let data_dir: &'static std::path::Path = Box::leak(Box::new(data_dir));
 
         let store = StateStore::open(data_dir.join("state.redb")).unwrap();
-        let kv = KvStore::open(data_dir.join("kv.redb")).unwrap();
-        let sql = SqlService::open(data_dir.join("sql.db")).unwrap();
-        let storage = StorageService::open(data_dir.join("storage")).unwrap();
+        let kv = Some(KvStore::open(data_dir.join("kv.redb")).unwrap());
+        let sql = Some(SqlService::open(data_dir.join("sql.db")).unwrap());
+        let storage = Some(StorageService::open(data_dir.join("storage")).unwrap());
         let cron = CronScheduler::new().await.unwrap();
 
         let app_state = Arc::new(RwLock::new(AppState {

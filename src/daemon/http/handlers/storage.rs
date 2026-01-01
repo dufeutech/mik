@@ -10,8 +10,20 @@ use axum::{
     response::IntoResponse,
 };
 
+use crate::daemon::services::storage::StorageService;
+
 use super::super::types::{StorageListQuery, StorageListResponse, StorageObjectInfo};
 use super::super::{AppError, SharedState, metrics};
+
+/// Helper to get Storage service or return 503 if disabled.
+async fn get_storage(state: &SharedState) -> Result<StorageService, AppError> {
+    let state = state.read().await;
+    state.storage.clone().ok_or_else(|| {
+        AppError::ServiceUnavailable(
+            "Storage service is disabled. Enable it in ~/.mik/daemon.toml".to_string(),
+        )
+    })
+}
 
 /// GET /storage - List objects with optional prefix.
 pub(crate) async fn storage_list(
@@ -19,11 +31,7 @@ pub(crate) async fn storage_list(
     Query(query): Query<StorageListQuery>,
 ) -> Result<Json<StorageListResponse>, AppError> {
     metrics::record_storage_operation("list", None);
-    // Clone storage service and drop lock before async operation
-    let storage = {
-        let state = state.read().await;
-        state.storage.clone()
-    };
+    let storage = get_storage(&state).await?;
     let mut objects: Vec<StorageObjectInfo> = storage
         .list_objects_async(query.prefix)
         .await?
@@ -44,11 +52,7 @@ pub(crate) async fn storage_get(
     State(state): State<SharedState>,
     Path(path): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Clone storage service and drop lock before async operation
-    let storage = {
-        let state = state.read().await;
-        state.storage.clone()
-    };
+    let storage = get_storage(&state).await?;
     let (data, meta) = storage
         .get_object_async(path.clone())
         .await?
@@ -70,11 +74,7 @@ pub(crate) async fn storage_put(
     body: Bytes,
 ) -> Result<StatusCode, AppError> {
     metrics::record_storage_operation("put", Some(body.len() as u64));
-    // Clone storage service and drop lock before async operation
-    let storage = {
-        let state = state.read().await;
-        state.storage.clone()
-    };
+    let storage = get_storage(&state).await?;
     let content_type = headers
         .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
@@ -92,11 +92,7 @@ pub(crate) async fn storage_delete(
     Path(path): Path<String>,
 ) -> Result<StatusCode, AppError> {
     metrics::record_storage_operation("delete", None);
-    // Clone storage service and drop lock before async operation
-    let storage = {
-        let state = state.read().await;
-        state.storage.clone()
-    };
+    let storage = get_storage(&state).await?;
     storage.delete_object_async(path).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -107,11 +103,7 @@ pub(crate) async fn storage_head(
     Path(path): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
     metrics::record_storage_operation("head", None);
-    // Clone storage service and drop lock before async operation
-    let storage = {
-        let state = state.read().await;
-        state.storage.clone()
-    };
+    let storage = get_storage(&state).await?;
     let meta = storage
         .head_object_async(path.clone())
         .await?

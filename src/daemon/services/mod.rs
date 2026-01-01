@@ -20,25 +20,3 @@ pub fn get_data_dir() -> anyhow::Result<PathBuf> {
     std::fs::create_dir_all(&data_dir)?;
     Ok(data_dir)
 }
-
-/// Service configuration for embedded services.
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct ServiceConfig {
-    /// Enable KV service
-    pub kv_enabled: bool,
-    /// Enable SQL service
-    pub sql_enabled: bool,
-    /// Enable Storage service
-    pub storage_enabled: bool,
-}
-
-impl Default for ServiceConfig {
-    fn default() -> Self {
-        Self {
-            kv_enabled: true,
-            sql_enabled: true,
-            storage_enabled: true,
-        }
-    }
-}

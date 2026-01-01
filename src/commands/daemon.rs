@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
+use crate::daemon::config::DaemonConfig;
 use crate::daemon::process::{self, SpawnConfig};
 use crate::daemon::state::{Instance, StateStore, Status};
 
@@ -21,7 +22,18 @@ fn get_state_path() -> Result<PathBuf> {
 /// Start the daemon for process management and scheduling.
 ///
 /// Listens for management requests on the specified port.
-pub async fn start(port: u16) -> Result<()> {
+/// If port is None, uses the port from daemon config or default (9919).
+pub async fn start(port: Option<u16>) -> Result<()> {
+    // Load daemon configuration
+    let config = DaemonConfig::load().unwrap_or_else(|e| {
+        eprintln!("Warning: Failed to load daemon config: {e}");
+        eprintln!("Using default configuration");
+        DaemonConfig::default()
+    });
+
+    // Use CLI port if provided, otherwise config port
+    let port = port.unwrap_or(config.daemon.port);
+
     println!("Starting mik daemon on port {port}...");
     println!("API endpoint: http://127.0.0.1:{port}");
     println!("\nEndpoints:");
@@ -29,12 +41,49 @@ pub async fn start(port: u16) -> Result<()> {
         "  Instances:  /instances, /instances/:name, /instances/:name/restart, /instances/:name/logs"
     );
     println!("  Cron:       /cron, /cron/:name, /cron/:name/trigger, /cron/:name/history");
-    println!("  Services:   /services, /services/:name, /services/:name/heartbeat");
+
+    // Show service status
+    print!("  Services:   ");
+    let mut services = Vec::new();
+    if config.services.kv_enabled {
+        services.push("/kv");
+    }
+    if config.services.sql_enabled {
+        services.push("/sql");
+    }
+    if config.services.storage_enabled {
+        services.push("/storage");
+    }
+    if services.is_empty() {
+        println!("(all disabled)");
+    } else {
+        println!("{}", services.join(", "));
+    }
+
     println!("  System:     /health, /version, /metrics");
+
+    // Show disabled services warning
+    if !config.services.kv_enabled
+        || !config.services.sql_enabled
+        || !config.services.storage_enabled
+    {
+        println!("\nDisabled services:");
+        if !config.services.kv_enabled {
+            println!("  - KV service");
+        }
+        if !config.services.sql_enabled {
+            println!("  - SQL service");
+        }
+        if !config.services.storage_enabled {
+            println!("  - Storage service");
+        }
+        println!("  Edit ~/.mik/daemon.toml to enable them");
+    }
+
     println!("\nPress Ctrl+C to stop the daemon\n");
 
     let state_path = get_state_path()?;
-    crate::daemon::http::serve(port, state_path).await
+    crate::daemon::http::serve(port, state_path, config).await
 }
 
 /// Stop a running WASM instance.
