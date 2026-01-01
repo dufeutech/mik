@@ -158,6 +158,8 @@ impl TestHostBuilder {
         let addr = listener.local_addr()?;
         // Drop the listener to free the port for the actual server
         drop(listener);
+        // Small delay to ensure port is fully released (Windows race condition fix)
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         // Create shutdown signal
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
@@ -937,6 +939,8 @@ impl RealTestHostBuilder {
         let addr = listener.local_addr()?;
         // Drop the listener to free the port for the actual server
         drop(listener);
+        // Small delay to ensure port is fully released (Windows race condition fix)
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         // Verify modules directory exists and has .wasm files
         if !self.modules_dir.exists() {

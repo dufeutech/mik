@@ -5,6 +5,8 @@ import rehypeMermaid from "rehype-mermaid";
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://dufeut.github.io",
+  base: "/mik",
   markdown: {
     rehypePlugins: [
       [
@@ -23,12 +25,12 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "mik",
-      description: "WASI HTTP runtime with JavaScript orchestration",
+      description: "Package Manager and Runtime for WASI HTTP Components",
       social: [
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/hlop3z/mik",
+          href: "https://github.com/dufeut/mik",
         },
       ],
       logo: {
@@ -43,6 +45,8 @@ export default defineConfig({
           label: "Guides",
           items: [
             { label: "Configuration", slug: "guides/configuration" },
+            { label: "Building Components", slug: "guides/building-components" },
+            { label: "Daemon Services", slug: "guides/daemon" },
             { label: "Scripts & Orchestration", slug: "guides/scripts" },
             { label: "Reliability Features", slug: "guides/reliability" },
           ],

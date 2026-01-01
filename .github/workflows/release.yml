@@ -1,22 +1,64 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 0.2.0)"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run (skip actual release)"
+        required: false
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  # Limit parallelism to prevent OOM on CI runners
   CARGO_BUILD_JOBS: 2
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.cliff.outputs.content }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag v${{ inputs.version }}
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Show changelog (dry run)
+        if: ${{ inputs.dry_run }}
+        run: cat CHANGELOG.md
+
+      - name: Commit changelog and create tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for v${{ inputs.version }}" || echo "No changes to commit"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin main --tags
+
   build:
     name: Build ${{ matrix.target }}
+    needs: prepare
+    if: ${{ !inputs.dry_run }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -43,6 +85,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -92,20 +136,31 @@ jobs:
           path: mik-${{ matrix.target }}.*
 
   release:
-    name: Create Release
-    needs: build
+    name: Create GitHub Release
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
+      - name: Generate release notes
+        id: notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          tag_name: v${{ inputs.version }}
+          name: mik v${{ inputs.version }}
+          body: ${{ steps.notes.outputs.content }}
           files: |
             artifacts/**/*
