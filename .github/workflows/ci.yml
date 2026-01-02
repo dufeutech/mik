@@ -59,12 +59,17 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           df -h
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config protobuf-compiler cmake build-essential
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libssl-dev pkg-config protobuf-compiler cmake build-essential
+          version: 1.0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: linux-ci
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
   check:
@@ -76,10 +81,15 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           df -h
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config protobuf-compiler cmake build-essential
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libssl-dev pkg-config protobuf-compiler cmake build-essential
+          version: 1.0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: linux-ci
       - run: cargo check --all-features --all-targets
 
   # ============================================================================
@@ -100,11 +110,16 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           df -h
-      - name: Install system dependencies (Linux)
+      - name: Cache apt packages (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config protobuf-compiler cmake build-essential
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libssl-dev pkg-config protobuf-compiler cmake build-essential
+          version: 1.0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-ci
       - run: cargo test --all-features
 
   # ============================================================================
@@ -125,9 +140,14 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           df -h
-      - name: Install system dependencies (Linux)
+      - name: Cache apt packages (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config protobuf-compiler cmake build-essential
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libssl-dev pkg-config protobuf-compiler cmake build-essential
+          version: 1.0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-ci
       - run: cargo build --release --all-features

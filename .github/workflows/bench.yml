@@ -25,16 +25,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libssl-dev pkg-config protobuf-compiler cmake build-essential
+          version: 1.0
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: linux-bench
 
       - name: Run benchmarks
         run: |
           cargo bench --bench runtime_benchmarks -- --noplot --output-format bencher | tee /tmp/benchmark-output.txt
           cargo bench --bench runtime_bench -- --noplot --output-format bencher | tee -a /tmp/benchmark-output.txt
+
+      - name: Clean working directory
+        run: git checkout -- .
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
