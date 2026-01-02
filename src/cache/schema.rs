@@ -14,7 +14,7 @@
 //!
 //! ```no_run
 //! use std::path::PathBuf;
-//! use mik::cache::schema::SchemaCache;
+//! use mik::cache::SchemaCache;
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! let cache = SchemaCache::new(PathBuf::from("~/.cache/mik/schemas"));
