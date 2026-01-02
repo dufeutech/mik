@@ -175,8 +175,8 @@ async fn test_list_keys_filters_expired() {
     // Add permanent key
     store.set("permanent", b"forever", None).await.unwrap();
 
-    // Add temporary key with 1 second TTL
-    let ttl = Some(Duration::from_secs(1));
+    // Add temporary key with 3 second TTL (longer to avoid CI timing issues)
+    let ttl = Some(Duration::from_secs(3));
     store.set("temporary", b"short-lived", ttl).await.unwrap();
 
     // Both should appear initially
@@ -184,7 +184,7 @@ async fn test_list_keys_filters_expired() {
     assert_eq!(keys.len(), 2);
 
     // Wait for expiration
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    tokio::time::sleep(Duration::from_secs(4)).await;
 
     // Only permanent key should remain
     let keys = store.list_keys(None).await.unwrap();
