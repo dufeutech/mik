@@ -13,6 +13,14 @@ repos:
         types: [rust]
         pass_filenames: false
 
+      - id: cargo-check
+        name: cargo check
+        description: Check Rust code compiles
+        entry: cargo check --all-features --all-targets
+        language: system
+        types: [rust]
+        pass_filenames: false
+
       - id: cargo-clippy
         name: cargo clippy
         description: Lint Rust code with clippy
@@ -23,8 +31,8 @@ repos:
 
       - id: cargo-test
         name: cargo test
-        description: Run library tests
-        entry: cargo test --lib
+        description: Run all tests
+        entry: cargo test --all-features
         language: system
         types: [rust]
         pass_filenames: false
@@ -34,6 +42,16 @@ repos:
         name: cargo doc
         description: Validate documentation builds without warnings
         entry: bash -c 'RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps'
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Cross-platform check: Run clippy in WSL on Windows to catch Unix-specific issues
+      - id: wsl-cargo-clippy
+        name: cargo clippy (WSL)
+        description: Lint Rust code in WSL to catch Unix-specific issues
+        entry: bash scripts/wsl-check.sh
         language: system
         types: [rust]
         pass_filenames: false
