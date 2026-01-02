@@ -27,8 +27,150 @@ fn normalize_language(lang: &str) -> &'static str {
     }
 }
 
+/// Detect the native host target triple for running tests.
+///
+/// Returns the appropriate target triple for the current platform:
+/// - Windows: `x86_64-pc-windows-msvc` or `x86_64-pc-windows-gnu`
+/// - macOS x86: `x86_64-apple-darwin`
+/// - macOS ARM: `aarch64-apple-darwin`
+/// - Linux x86: `x86_64-unknown-linux-gnu`
+/// - Linux ARM: `aarch64-unknown-linux-gnu`
+fn detect_host_target() -> &'static str {
+    #[cfg(all(target_os = "windows", target_arch = "x86_64", target_env = "msvc"))]
+    {
+        "x86_64-pc-windows-msvc"
+    }
+    #[cfg(all(target_os = "windows", target_arch = "x86_64", target_env = "gnu"))]
+    {
+        "x86_64-pc-windows-gnu"
+    }
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        "x86_64-apple-darwin"
+    }
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        "aarch64-apple-darwin"
+    }
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        "x86_64-unknown-linux-gnu"
+    }
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        "aarch64-unknown-linux-gnu"
+    }
+    // Fallback for other platforms
+    #[cfg(not(any(
+        all(target_os = "windows", target_arch = "x86_64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "aarch64"),
+    )))]
+    {
+        // Try to get from rustc if we're on an unsupported platform
+        "x86_64-unknown-linux-gnu"
+    }
+}
+
+/// Extract OpenAPI schema from handler by running the mik-sdk schema test.
+///
+/// The mik-sdk generates schemas at build time via `cargo test __mik_write_schema`.
+/// This creates an `openapi.json` file in the handler directory.
+///
+/// # Returns
+/// - `Ok(Some(path))` if schema was extracted successfully
+/// - `Ok(None)` if the handler doesn't use routes! macro (no schema test)
+/// - `Err` only for unexpected failures
+fn extract_schema() -> Result<Option<PathBuf>> {
+    // Check for Cargo.toml (Rust project)
+    if !Path::new("Cargo.toml").exists() {
+        return Ok(None);
+    }
+
+    let host_target = detect_host_target();
+
+    println!();
+    println!("Extracting OpenAPI schema...");
+    println!("  Target: {host_target}");
+
+    let spinner = ui::create_spinner("Running schema extraction test...");
+
+    // Run: cargo test __mik_write_schema --target <host> -- --exact --nocapture
+    let output = Command::new("cargo")
+        .args([
+            "test",
+            "__mik_write_schema",
+            "--target",
+            host_target,
+            "--",
+            "--exact",
+            "--nocapture",
+        ])
+        .output()
+        .context("Failed to run cargo test for schema extraction")?;
+
+    spinner.finish_and_clear();
+
+    if output.status.success() {
+        // Check if openapi.json was created
+        let schema_path = PathBuf::from("openapi.json");
+        if schema_path.exists() {
+            let size = fs::metadata(&schema_path).map(|m| m.len()).unwrap_or(0);
+            println!(
+                "Schema extracted: {} ({})",
+                schema_path.display(),
+                format_bytes(size)
+            );
+            return Ok(Some(schema_path));
+        }
+        // Test passed but no schema file - handler might not export routes
+        println!("  Note: Schema test passed but no openapi.json generated");
+        return Ok(None);
+    }
+
+    // Check if the test simply doesn't exist (handler doesn't use routes! macro)
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Common patterns when test doesn't exist
+    if stderr.contains("no tests to run")
+        || stderr.contains("0 passed")
+        || stdout.contains("0 passed; 0 failed")
+        || stderr.contains("could not compile")
+        || stderr.contains("no test named")
+    {
+        println!(
+            "  Note: Handler does not export routes! macro schema (test not found or compilation failed)"
+        );
+        return Ok(None);
+    }
+
+    // Test exists but failed - this is a warning, not a build failure
+    eprintln!("  Warning: Schema extraction test failed");
+    if !stderr.is_empty() {
+        // Only show first few lines of error
+        let error_preview: String = stderr.lines().take(5).collect::<Vec<_>>().join("\n");
+        eprintln!("  {error_preview}");
+    }
+
+    Ok(None)
+}
+
 /// Build the component.
-pub async fn execute(release: bool, compose: bool, lang_override: Option<String>) -> Result<()> {
+///
+/// # Arguments
+/// - `release`: Build in release mode with optimizations
+/// - `compose`: Compose with dependencies using wac
+/// - `lang_override`: Override detected language (rust/typescript)
+/// - `no_schema`: Skip OpenAPI schema extraction
+pub async fn execute(
+    release: bool,
+    compose: bool,
+    lang_override: Option<String>,
+    no_schema: bool,
+) -> Result<()> {
     // Load mik.toml if it exists
     let manifest = Manifest::load().ok();
 
@@ -52,7 +194,15 @@ pub async fn execute(release: bool, compose: bool, lang_override: Option<String>
 
     println!("Building: {name} ({language})");
 
-    // Build based on language
+    // Step 1: Extract schema BEFORE building WASM (for Rust projects only)
+    // This runs cargo test which needs the native target, not wasm32-wasip2
+    let schema_path = if !no_schema && language == "rust" {
+        extract_schema()?
+    } else {
+        None
+    };
+
+    // Step 2: Build based on language
     let (wasm_path, target_base) = match language {
         "rust" => build_rust(&name, release)?,
         "typescript" => build_typescript(&name)?,
@@ -90,8 +240,14 @@ pub async fn execute(release: bool, compose: bool, lang_override: Option<String>
     // Determine if we did any composition
     let did_compose = compose || http_composed.is_some();
 
-    // Package to dist/ folder
-    package_to_dist(&final_wasm, &name, release, did_compose)?;
+    // Step 4: Package to dist/ folder (including schema if present)
+    package_to_dist(
+        &final_wasm,
+        &name,
+        release,
+        did_compose,
+        schema_path.as_deref(),
+    )?;
 
     Ok(())
 }
@@ -258,7 +414,16 @@ fn build_typescript(name: &str) -> Result<(PathBuf, PathBuf)> {
 // =============================================================================
 
 /// Package the built component to dist/ folder with tar.gz.
-fn package_to_dist(wasm_path: &Path, name: &str, release: bool, composed: bool) -> Result<()> {
+///
+/// If `schema_path` is provided, the OpenAPI schema is copied to `dist/<name>.openapi.json`
+/// and included in the tar.gz package.
+fn package_to_dist(
+    wasm_path: &Path,
+    name: &str,
+    release: bool,
+    composed: bool,
+    schema_path: Option<&Path>,
+) -> Result<()> {
     // Create dist directory
     let dist_dir = Path::new("dist");
     fs::create_dir_all(dist_dir)?;
@@ -268,15 +433,25 @@ fn package_to_dist(wasm_path: &Path, name: &str, release: bool, composed: bool) 
     let mode = if release { "release" } else { "debug" };
     let wasm_name = format!("{name}{suffix}.wasm");
     let tar_name = format!("{name}{suffix}-{mode}.tar.gz");
+    let schema_name = format!("{name}.openapi.json");
 
     let dist_wasm = dist_dir.join(&wasm_name);
     let dist_tar = dist_dir.join(&tar_name);
+    let dist_schema = dist_dir.join(&schema_name);
 
     // Copy wasm to dist/
     fs::copy(wasm_path, &dist_wasm).context("Failed to copy wasm to dist/")?;
 
     // Get wasm size
     let wasm_size = fs::metadata(&dist_wasm).map(|m| m.len()).unwrap_or(0);
+
+    // Copy schema to dist/ if present
+    let schema_size = if let Some(schema) = schema_path {
+        fs::copy(schema, &dist_schema).context("Failed to copy schema to dist/")?;
+        fs::metadata(&dist_schema).map(|m| m.len()).unwrap_or(0)
+    } else {
+        0
+    };
 
     // Create tar.gz
     {
@@ -287,6 +462,12 @@ fn package_to_dist(wasm_path: &Path, name: &str, release: bool, composed: bool) 
         // Add wasm to tar
         let mut wasm_file = File::open(&dist_wasm)?;
         tar.append_file(&wasm_name, &mut wasm_file)?;
+
+        // Add schema to tar if present
+        if schema_path.is_some() && dist_schema.exists() {
+            let mut schema_file = File::open(&dist_schema)?;
+            tar.append_file(&schema_name, &mut schema_file)?;
+        }
 
         // Finish tar and properly close the encoder
         let encoder = tar.into_inner()?;
@@ -299,9 +480,15 @@ fn package_to_dist(wasm_path: &Path, name: &str, release: bool, composed: bool) 
     // Print summary
     ui::print_summary_header("Build Summary");
     println!("Output:     dist/{wasm_name}");
+    if schema_path.is_some() {
+        println!("Schema:     dist/{schema_name}");
+    }
     println!("Package:    dist/{tar_name}");
     println!();
     println!("WASM size:  {}", format_bytes(wasm_size));
+    if schema_size > 0 {
+        println!("Schema:     {}", format_bytes(schema_size));
+    }
     #[allow(clippy::cast_precision_loss)]
     let ratio = (tar_size as f64 / wasm_size as f64) * 100.0;
     println!(

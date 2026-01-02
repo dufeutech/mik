@@ -65,6 +65,7 @@ mod observability;
 pub mod reliability;
 pub mod request;
 pub mod request_handler;
+pub mod schema_handler;
 pub mod script;
 pub mod security;
 pub mod server;
@@ -122,6 +123,9 @@ pub(crate) use wasm_executor::execute_wasm_request_internal;
 
 /// Route prefix for WASM module requests.
 pub const RUN_PREFIX: &str = "/run/";
+
+/// Route prefix for OpenAPI schema requests.
+pub const OPENAPI_PREFIX: &str = "/openapi/";
 
 /// Built-in health check endpoint.
 pub const HEALTH_PATH: &str = "/health";

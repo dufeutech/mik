@@ -171,3 +171,13 @@ pub mod utils;
 /// - [`ui::print_error_box_from_output`] - Print errors from command output
 /// - [`ui::print_error_box_with_hints`] - Print errors with troubleshooting hints
 pub mod ui;
+
+/// Schema caching infrastructure.
+///
+/// Provides content-addressed caching for JSON schemas using BLAKE3 hashes.
+/// Schemas are cached in `~/.cache/mik/schemas/` and managed via `mik cache` commands.
+///
+/// - [`cache::SchemaCache`] - BLAKE3 content-addressed file cache
+/// - [`cache::SchemaStats`] - Cache statistics (entry count, total bytes)
+/// - [`cache::CacheConfig`] - Configuration for cache behavior
+pub mod cache;

@@ -11,13 +11,15 @@ use crate::runtime::compression::{accepts_gzip, maybe_compress_response};
 use crate::runtime::endpoints::{handle_health_endpoint, handle_metrics_endpoint};
 use crate::runtime::error::{self, Error};
 use crate::runtime::host_state::HyperCompatibleBody;
+use crate::runtime::schema_handler;
 use crate::runtime::script;
 use crate::runtime::spans::{SpanBuilder, SpanCollector, SpanSummary};
 use crate::runtime::static_files::serve_static_file;
 use crate::runtime::types::ErrorCategory;
 use crate::runtime::wasm_executor::execute_wasm_request;
 use crate::runtime::{
-    HEALTH_PATH, METRICS_PATH, RUN_PREFIX, SCRIPT_PREFIX, STATIC_PREFIX, SharedState,
+    HEALTH_PATH, METRICS_PATH, OPENAPI_PREFIX, RUN_PREFIX, SCRIPT_PREFIX, STATIC_PREFIX,
+    SharedState,
 };
 use anyhow::Result;
 use http_body_util::{BodyExt, Full, Limited};
@@ -453,6 +455,17 @@ pub(crate) async fn handle_request_inner(
                 .map(|resp| maybe_compress_response(resp, client_accepts_gzip)),
             None => not_found("Static file serving not enabled"),
         };
+    }
+
+    // Handle OpenAPI schema requests: /openapi/<module>
+    if let Some(module_name) = path.strip_prefix(OPENAPI_PREFIX) {
+        // Strip trailing slash if present
+        let module_name = module_name.trim_end_matches('/');
+        if module_name.is_empty() {
+            return not_found("No module specified. Use /openapi/<module>");
+        }
+        let schema_path = schema_handler::get_schema_path(&shared.modules_dir, module_name);
+        return Ok(schema_handler::serve_static_schema(&schema_path));
     }
 
     // Handle script requests

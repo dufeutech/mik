@@ -20,6 +20,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::str::FromStr;
 
+mod cache;
 mod commands;
 mod constants;
 mod daemon;
@@ -263,12 +264,14 @@ enum Commands {
     /// Compiles to WASM component targeting `wasm32-wasip2`.
     /// Supports multiple languages: Rust (default) and `TypeScript`.
     /// Optionally composes all dependencies using WAC.
+    /// Extracts OpenAPI schema if handler uses mik-sdk routes! macro.
     ///
     /// Examples:
     ///   mik build                   # Build (language from mik.toml or Rust)
     ///   mik build --release         # Optimized build
     ///   mik build -rc               # Release + compose dependencies
     ///   mik build --lang ts         # Build `TypeScript` project
+    ///   mik build --no-schema       # Skip schema extraction
     Build {
         /// Build in release mode
         #[arg(short, long)]
@@ -279,6 +282,9 @@ enum Commands {
         /// Language override: rust, typescript (ts)
         #[arg(long, short = 'l', value_parser = ["rust", "rs", "typescript", "ts"])]
         lang: Option<String>,
+        /// Skip OpenAPI schema extraction
+        #[arg(long)]
+        no_schema: bool,
     },
     /// Run the component with local development server
     ///
@@ -544,8 +550,9 @@ async fn main() -> Result<()> {
             release,
             compose,
             lang,
+            no_schema,
         } => {
-            commands::build::execute(release, compose, lang).await?;
+            commands::build::execute(release, compose, lang, no_schema).await?;
         },
         Commands::Run {
             component,

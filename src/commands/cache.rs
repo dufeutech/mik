@@ -14,6 +14,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::CacheAction;
+use crate::cache::SchemaCache;
 use crate::runtime::aot_cache::{AotCache, AotCacheConfig};
 
 /// Get OCI cache directory.
@@ -68,14 +69,20 @@ fn clear_oci_cache() -> (u64, u64) {
     }
 }
 
+/// Get schema cache directory.
+fn get_schema_cache_dir() -> Option<PathBuf> {
+    dirs::cache_dir().map(|d| d.join("mik").join("schemas"))
+}
+
 /// Execute cache management command.
 pub fn execute(action: CacheAction) -> Result<()> {
-    let cache = AotCache::new(AotCacheConfig::default())?;
+    let aot_cache = AotCache::new(AotCacheConfig::default())?;
+    let schema_cache = SchemaCache::default_location();
 
     match action {
         CacheAction::Info => {
             // AOT cache stats
-            let stats = cache.stats()?;
+            let stats = aot_cache.stats()?;
             println!("AOT Cache (compiled modules)");
             println!("============================");
             println!("Location:    {}", stats.cache_dir.display());
@@ -86,6 +93,21 @@ pub fn execute(action: CacheAction) -> Result<()> {
                 "Usage:       {:.1}%",
                 (stats.total_size_bytes as f64 / stats.max_size_bytes as f64) * 100.0
             );
+
+            // Schema cache stats
+            println!();
+            println!("Schema Cache (JSON schemas)");
+            println!("===========================");
+            if let Some(ref cache) = schema_cache {
+                let schema_stats = cache.stats();
+                if let Some(dir) = get_schema_cache_dir() {
+                    println!("Location:    {}", dir.display());
+                }
+                println!("Entries:     {}", schema_stats.entries);
+                println!("Total size:  {} KB", schema_stats.total_bytes / 1024);
+            } else {
+                println!("(unavailable - no cache directory)");
+            }
 
             // OCI cache stats
             let (oci_count, oci_size) = get_oci_cache_stats();
@@ -99,46 +121,67 @@ pub fn execute(action: CacheAction) -> Result<()> {
             println!("Total size:  {} KB", oci_size / 1024);
         },
         CacheAction::Clean { max_size_mb } => {
-            // Create cache with custom max size for cleanup
+            // Create AOT cache with custom max size for cleanup
             let config = AotCacheConfig {
                 max_size_bytes: max_size_mb * 1024 * 1024,
                 bypass: false,
             };
-            let cache = AotCache::new(config)?;
-            let stats = cache.cleanup()?;
+            let aot_cache_sized = AotCache::new(config)?;
+            let aot_stats = aot_cache_sized.cleanup()?;
 
-            if stats.entries_removed == 0 {
-                println!("AOT cache is already within size limit. Nothing to clean.");
+            // Clean schema cache (remove entries older than 30 days)
+            let schema_removed = if let Some(ref cache) = schema_cache {
+                cache.clean(30).unwrap_or(0)
             } else {
-                println!("AOT cache cleaned successfully");
-                println!("  Entries removed: {}", stats.entries_removed);
+                0
+            };
+
+            let total_removed = aot_stats.entries_removed + schema_removed;
+
+            if total_removed == 0 {
+                println!("Caches are already within size limits. Nothing to clean.");
+            } else {
+                println!("Caches cleaned successfully");
+                println!("  AOT entries removed:    {}", aot_stats.entries_removed);
+                println!("  Schema entries removed: {schema_removed}");
                 println!(
-                    "  Space freed:     {} MB",
-                    stats.bytes_freed / (1024 * 1024)
-                );
-                println!(
-                    "  Current size:    {} MB",
-                    stats.current_size_bytes / (1024 * 1024)
+                    "  AOT space freed:        {} MB",
+                    aot_stats.bytes_freed / (1024 * 1024)
                 );
             }
         },
         CacheAction::Clear => {
             // Clear AOT cache
-            let aot_stats = cache.clear()?;
+            let aot_stats = aot_cache.clear()?;
+
+            // Clear schema cache (get stats before clearing)
+            let (schema_count, schema_size) = if let Some(ref cache) = schema_cache {
+                let stats = cache.stats();
+                let count = stats.entries;
+                let size = stats.total_bytes;
+                let _ = cache.clear();
+                (count as u64, size)
+            } else {
+                (0, 0)
+            };
 
             // Clear OCI cache
             let (oci_count, oci_size) = clear_oci_cache();
 
-            let total_removed = aot_stats.entries_removed as u64 + oci_count;
-            let total_freed = aot_stats.bytes_freed + oci_size;
+            let total_removed = aot_stats.entries_removed as u64 + schema_count + oci_count;
+            let total_freed = aot_stats.bytes_freed + schema_size + oci_size;
 
             if total_removed == 0 {
                 println!("Caches are already empty.");
             } else {
                 println!("Caches cleared successfully");
-                println!("  AOT entries removed: {}", aot_stats.entries_removed);
-                println!("  OCI entries removed: {oci_count}");
-                println!("  Total space freed:   {} MB", total_freed / (1024 * 1024));
+                println!("  AOT entries removed:    {}", aot_stats.entries_removed);
+                println!("  Schema entries removed: {schema_count}");
+                println!("  OCI entries removed:    {oci_count}");
+                println!(
+                    "  Total space freed:      {} MB",
+                    total_freed / (1024 * 1024)
+                );
             }
         },
     }

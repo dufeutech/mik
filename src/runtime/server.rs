@@ -34,7 +34,7 @@
 //! ```
 
 use crate::runtime::{
-    HEALTH_PATH, METRICS_PATH, RUN_PREFIX, Runtime, SCRIPT_PREFIX, STATIC_PREFIX,
+    HEALTH_PATH, METRICS_PATH, OPENAPI_PREFIX, RUN_PREFIX, Runtime, SCRIPT_PREFIX, STATIC_PREFIX,
 };
 use anyhow::Result;
 use hyper::service::service_fn;
@@ -146,6 +146,8 @@ impl Server {
         } else {
             info!("Routes: {}<module>/* -> <module>.wasm", RUN_PREFIX);
         }
+
+        info!("Schema: {}<module> -> OpenAPI spec", OPENAPI_PREFIX);
 
         if self.runtime.has_static_files() {
             info!("Routes: {}<project>/* -> static files", STATIC_PREFIX);
