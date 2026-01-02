@@ -303,6 +303,34 @@ mik cache <SUBCOMMAND>
 
 ---
 
+### mik completions
+
+Generate shell completion scripts for tab completion support.
+
+```bash
+mik completions <SHELL>
+```
+
+**Supported shells:** `bash`, `zsh`, `fish`, `powershell`, `elvish`
+
+**Installation:**
+
+```bash
+# Bash
+mik completions bash > ~/.local/share/bash-completion/completions/mik
+
+# Zsh (add fpath+=~/.zfunc to .zshrc first)
+mik completions zsh > ~/.zfunc/_mik
+
+# Fish
+mik completions fish > ~/.config/fish/completions/mik.fish
+
+# PowerShell
+mik completions powershell >> $PROFILE
+```
+
+---
+
 ## Instance Management
 
 Commands for managing background WASM instances. The daemon is auto-managed - it starts automatically when needed and stops when the last instance is stopped.

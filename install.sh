@@ -1,83 +1,202 @@
-#!/bin/sh
-# mik installer for macOS and Linux
-# Usage: curl -LsSf https://raw.githubusercontent.com/dufeut/mik/main/install.sh | sh
+#!/bin/bash
+# mik installer script
+# Usage: curl -fsSL https://raw.githubusercontent.com/dufeut/mik/main/install.sh | bash
+#
+# Options (via env vars):
+#   MIK_VERSION=v0.1.0    Install specific version (default: latest)
+#   MIK_NO_COMPLETIONS=1  Skip shell completions
+#   MIK_INSTALL_DIR=~/.local/bin  Custom install directory
 
-set -e
+set -euo pipefail
 
-REPO="dufeut/mik"
-INSTALL_DIR="${MIK_INSTALL_DIR:-$HOME/.mik/bin}"
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+info() { echo -e "${BLUE}==>${NC} $1"; }
+success() { echo -e "${GREEN}==>${NC} $1"; }
+warn() { echo -e "${YELLOW}==>${NC} $1"; }
+error() { echo -e "${RED}Error:${NC} $1" >&2; exit 1; }
 
 # Detect OS and architecture
 detect_platform() {
-    OS="$(uname -s)"
-    ARCH="$(uname -m)"
+    local os arch
 
-    case "$OS" in
-        Linux)
-            case "$ARCH" in
-                x86_64)  PLATFORM="x86_64-unknown-linux-gnu" ;;
-                aarch64) PLATFORM="aarch64-unknown-linux-gnu" ;;
-                *)       echo "Unsupported architecture: $ARCH"; exit 1 ;;
-            esac
-            ;;
-        Darwin)
-            case "$ARCH" in
-                x86_64)  PLATFORM="x86_64-apple-darwin" ;;
-                arm64)   PLATFORM="aarch64-apple-darwin" ;;
-                *)       echo "Unsupported architecture: $ARCH"; exit 1 ;;
-            esac
-            ;;
-        *)
-            echo "Unsupported OS: $OS"
-            exit 1
-            ;;
+    case "$(uname -s)" in
+        Linux*)  os="unknown-linux" ;;
+        Darwin*) os="apple-darwin" ;;
+        MINGW*|MSYS*|CYGWIN*) os="pc-windows-msvc" ;;
+        *) error "Unsupported OS: $(uname -s)" ;;
     esac
+
+    case "$(uname -m)" in
+        x86_64|amd64) arch="x86_64" ;;
+        aarch64|arm64) arch="aarch64" ;;
+        *) error "Unsupported architecture: $(uname -m)" ;;
+    esac
+
+    # Linux: prefer musl for better portability
+    if [[ "$os" == "unknown-linux" ]]; then
+        if ldd --version 2>&1 | grep -q musl; then
+            os="unknown-linux-musl"
+        else
+            os="unknown-linux-gnu"
+        fi
+    fi
+
+    echo "${arch}-${os}"
 }
 
 # Get latest version from GitHub
 get_latest_version() {
-    VERSION=$(curl -sL "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
-    if [ -z "$VERSION" ]; then
-        echo "Failed to get latest version"
-        exit 1
+    curl -fsSL "https://api.github.com/repos/dufeut/mik/releases/latest" \
+        | grep '"tag_name"' \
+        | sed -E 's/.*"([^"]+)".*/\1/'
+}
+
+# Download and install binary
+install_binary() {
+    local version="$1"
+    local platform="$2"
+    local install_dir="$3"
+
+    local ext="tar.gz"
+    [[ "$platform" == *"windows"* ]] && ext="zip"
+
+    local url="https://github.com/dufeut/mik/releases/download/${version}/mik-${platform}.${ext}"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    trap "rm -rf $tmp_dir" EXIT
+
+    info "Downloading mik ${version} for ${platform}..."
+    curl -fsSL "$url" -o "$tmp_dir/mik.${ext}" || error "Failed to download from $url"
+
+    info "Extracting..."
+    cd "$tmp_dir"
+    if [[ "$ext" == "zip" ]]; then
+        unzip -q "mik.${ext}"
+    else
+        tar -xzf "mik.${ext}"
+    fi
+
+    # Create install directory if needed
+    mkdir -p "$install_dir"
+
+    # Install binary
+    local binary="mik"
+    [[ "$platform" == *"windows"* ]] && binary="mik.exe"
+
+    mv "$binary" "$install_dir/" || error "Failed to install. Try: sudo $0"
+    chmod +x "$install_dir/$binary"
+
+    success "Installed mik to $install_dir/$binary"
+}
+
+# Detect current shell
+detect_shell() {
+    local shell_name
+    shell_name=$(basename "${SHELL:-/bin/bash}")
+
+    case "$shell_name" in
+        bash|zsh|fish) echo "$shell_name" ;;
+        *) echo "bash" ;;  # Default to bash
+    esac
+}
+
+# Install shell completions
+install_completions() {
+    local install_dir="$1"
+    local mik_bin="$install_dir/mik"
+    local shell_name
+    shell_name=$(detect_shell)
+
+    [[ ! -x "$mik_bin" ]] && return
+
+    info "Installing $shell_name completions..."
+
+    case "$shell_name" in
+        bash)
+            local bash_dir="${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions}"
+            mkdir -p "$bash_dir"
+            "$mik_bin" completions bash > "$bash_dir/mik"
+            success "Bash completions installed to $bash_dir/mik"
+            echo "    Restart your shell or run: source $bash_dir/mik"
+            ;;
+        zsh)
+            local zsh_dir="${ZDOTDIR:-$HOME}/.zfunc"
+            mkdir -p "$zsh_dir"
+            "$mik_bin" completions zsh > "$zsh_dir/_mik"
+            success "Zsh completions installed to $zsh_dir/_mik"
+            if ! grep -q 'fpath+=.*\.zfunc' "${ZDOTDIR:-$HOME}/.zshrc" 2>/dev/null; then
+                echo ""
+                warn "Add this to your ~/.zshrc:"
+                echo "    fpath+=~/.zfunc"
+                echo "    autoload -Uz compinit && compinit"
+            fi
+            ;;
+        fish)
+            local fish_dir="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
+            mkdir -p "$fish_dir"
+            "$mik_bin" completions fish > "$fish_dir/mik.fish"
+            success "Fish completions installed to $fish_dir/mik.fish"
+            ;;
+    esac
+}
+
+# Check if directory is in PATH
+check_path() {
+    local dir="$1"
+    if [[ ":$PATH:" != *":$dir:"* ]]; then
+        echo ""
+        warn "$dir is not in your PATH"
+        echo "    Add this to your shell profile:"
+        echo "    export PATH=\"$dir:\$PATH\""
     fi
 }
 
-# Download and install
-install() {
-    detect_platform
-    get_latest_version
+# Main
+main() {
+    echo ""
+    echo "  ┌─────────────────────────────────────┐"
+    echo "  │  mik - WASI HTTP Component Runtime  │"
+    echo "  └─────────────────────────────────────┘"
+    echo ""
 
-    echo "Installing mik v$VERSION for $PLATFORM..."
+    # Configuration
+    local version="${MIK_VERSION:-$(get_latest_version)}"
+    local install_dir="${MIK_INSTALL_DIR:-$HOME/.local/bin}"
+    local platform
+    platform=$(detect_platform)
 
-    DOWNLOAD_URL="https://github.com/$REPO/releases/download/v$VERSION/mik-$PLATFORM.tar.gz"
-    TEMP_DIR=$(mktemp -d)
-    TEMP_FILE="$TEMP_DIR/mik.tar.gz"
+    info "Platform: $platform"
+    info "Version: $version"
+    info "Install directory: $install_dir"
+    echo ""
 
-    echo "Downloading from $DOWNLOAD_URL..."
-    curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_FILE"
+    # Install binary
+    install_binary "$version" "$platform" "$install_dir"
 
-    echo "Extracting..."
-    tar -xzf "$TEMP_FILE" -C "$TEMP_DIR"
+    # Install completions (unless disabled)
+    if [[ -z "${MIK_NO_COMPLETIONS:-}" ]]; then
+        echo ""
+        install_completions "$install_dir"
+    fi
 
-    echo "Installing to $INSTALL_DIR..."
-    mkdir -p "$INSTALL_DIR"
-    mv "$TEMP_DIR/mik" "$INSTALL_DIR/mik"
-    chmod +x "$INSTALL_DIR/mik"
-
-    rm -rf "$TEMP_DIR"
+    # Check PATH
+    check_path "$install_dir"
 
     echo ""
-    echo "mik v$VERSION installed successfully!"
+    success "Installation complete!"
     echo ""
-    echo "Add mik to your PATH by adding this to your shell config:"
-    echo ""
-    echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
-    echo ""
-    echo "Then restart your shell or run:"
-    echo ""
-    echo "  source ~/.bashrc  # or ~/.zshrc"
+    echo "  Get started:"
+    echo "    mik new my-service"
+    echo "    cd my-service"
+    echo "    mik build -rc"
+    echo "    mik dev"
     echo ""
 }
 
-install
+main "$@"

@@ -22,8 +22,23 @@ cargo install wac-cli
 
 ## Install mik CLI
 
+**Quick install (recommended):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dufeut/mik/main/install.sh | bash
+```
+
+This downloads the latest release and sets up shell completions automatically.
+
+**Or via cargo:**
+
 ```bash
 cargo install mik
+
+# Optional: enable tab completions
+mik completions bash > ~/.local/share/bash-completion/completions/mik  # bash
+mik completions zsh > ~/.zfunc/_mik                                     # zsh
+mik completions fish > ~/.config/fish/completions/mik.fish              # fish
 ```
 
 ## Quick Start
