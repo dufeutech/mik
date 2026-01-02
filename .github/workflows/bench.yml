@@ -48,6 +48,8 @@ jobs:
           alert-threshold: '150%'
           comment-on-alert: true
           fail-on-alert: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: benchmarks
 
       - name: Compare with baseline (PR)
         if: github.event_name == 'pull_request'
