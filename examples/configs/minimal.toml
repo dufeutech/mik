@@ -1,0 +1,12 @@
+# Minimal configuration for a single-module project
+# Copy this to your project root as mik.toml
+
+[project]
+name = "my-api"
+version = "0.1.0"
+
+[server]
+port = 3000
+
+[composition]
+http_handler = true

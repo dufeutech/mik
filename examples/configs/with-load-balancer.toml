@@ -1,0 +1,46 @@
+# Configuration with integrated L7 load balancer
+# Distributes requests across multiple backend workers
+
+[project]
+name = "load-balanced-api"
+version = "1.0.0"
+description = "API with integrated load balancing"
+
+[server]
+port = 8080
+modules = "modules/"
+auto = false
+
+# Higher limits for load-balanced setup
+max_concurrent_requests = 5000
+max_per_module_requests = 100
+
+[composition]
+http_handler = true
+
+[tracing]
+enabled = true
+service_name = "load-balanced-api"
+otlp_endpoint = "http://tempo:4317"
+
+[lb]
+enabled = true
+
+# Health check configuration
+health_check_type = "http"        # "http" or "tcp"
+health_check_path = "/health"     # Path for HTTP health checks
+health_check_interval_ms = 5000   # Check every 5 seconds
+health_check_timeout_ms = 2000    # 2s timeout per check
+
+# Health thresholds
+unhealthy_threshold = 3           # 3 failures = unhealthy
+healthy_threshold = 2             # 2 successes = healthy again
+
+# Connection settings
+request_timeout_secs = 30         # Request timeout
+max_connections_per_backend = 100 # Connection pool size
+pool_idle_timeout_secs = 90       # Idle connection timeout
+tcp_keepalive_secs = 60           # TCP keepalive interval
+
+# HTTP/2 (enable if all backends support it)
+http2_only = false

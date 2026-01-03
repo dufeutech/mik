@@ -1,0 +1,39 @@
+# Multi-tenant configuration for SaaS deployments
+# Platform modules: /run/<module>/
+# Tenant modules:   /tenant/<tenant-id>/<module>/
+
+[project]
+name = "saas-platform"
+version = "1.0.0"
+description = "Multi-tenant SaaS platform"
+
+[server]
+port = 8080
+modules = "modules/"              # Platform modules (shared)
+user_modules = "user-modules/"    # Tenant modules (isolated)
+
+# Cache settings for multi-tenant
+cache_size = 200                  # More modules to cache
+max_cache_mb = 512                # Larger cache for tenant variety
+
+# Per-tenant limits
+max_per_module_requests = 20      # Concurrent requests per tenant module
+execution_timeout_secs = 30       # Prevent runaway tenant code
+
+[composition]
+http_handler = true
+
+[tracing]
+enabled = true
+service_name = "saas-platform"
+
+# Directory structure:
+# project/
+# ├── modules/
+# │   └── gateway.wasm           # Shared platform module
+# ├── user-modules/
+# │   ├── tenant-abc/
+# │   │   └── orders.wasm        # Tenant A's module
+# │   └── tenant-xyz/
+# │       └── products.wasm      # Tenant B's module
+# └── mik.toml

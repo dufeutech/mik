@@ -1,0 +1,21 @@
+# Multi-module configuration with multiple WASM handlers
+# Modules are loaded from modules/ directory
+# Access via: /run/<module-name>/
+
+[project]
+name = "multi-module-api"
+version = "0.1.0"
+description = "API with multiple WASM handlers"
+
+[server]
+port = 3000
+modules = "modules/"          # Directory containing WASM files
+cache_size = 50               # Cache up to 50 modules
+max_cache_mb = 128            # Max 128MB cache memory
+
+[composition]
+http_handler = true
+
+[tracing]
+enabled = true
+service_name = "multi-module-api"

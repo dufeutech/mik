@@ -1,0 +1,300 @@
+---
+title: Multi-Tenant Routing
+description: Isolate WASM modules per tenant with dedicated routing
+---
+
+mik supports multi-tenant deployments where each tenant has their own isolated set of WASM modules. This enables SaaS-style architectures where customer code runs in complete isolation.
+
+## Overview
+
+Multi-tenant routing provides two separate module namespaces:
+
+| Route Pattern | Module Location | Use Case |
+|---------------|-----------------|----------|
+| `/run/<module>/` | `modules/<module>.wasm` | Platform modules (shared) |
+| `/tenant/<tenant-id>/<module>/` | `user-modules/<tenant-id>/<module>.wasm` | Tenant modules (isolated) |
+
+```
+project/
+├── modules/                    # Platform modules
+│   ├── auth.wasm              # Shared authentication
+│   └── router.wasm            # Shared routing
+├── user-modules/              # Tenant modules
+│   ├── tenant-abc/
+│   │   ├── orders.wasm        # Tenant A's order handler
+│   │   └── inventory.wasm     # Tenant A's inventory
+│   └── tenant-xyz/
+│       └── products.wasm      # Tenant B's product handler
+└── mik.toml
+```
+
+## Configuration
+
+Enable multi-tenant routing by setting `user_modules` in your `mik.toml`:
+
+```toml
+[project]
+name = "multi-tenant-platform"
+version = "0.1.0"
+
+[server]
+port = 3000
+modules = "modules/"           # Platform modules
+user_modules = "user-modules/" # Tenant modules
+```
+
+## Routing Examples
+
+### Platform Modules
+
+Platform modules are accessible to all requests via `/run/`:
+
+```bash
+# Access platform auth module
+curl http://localhost:3000/run/auth/login
+
+# Access with subpath
+curl http://localhost:3000/run/router/api/v1/routes
+```
+
+### Tenant Modules
+
+Tenant modules are isolated per tenant via `/tenant/<tenant-id>/`:
+
+```bash
+# Tenant A accessing their orders module
+curl http://localhost:3000/tenant/tenant-abc/orders/
+
+# Tenant A with subpath
+curl http://localhost:3000/tenant/tenant-abc/orders/api/v1/items
+
+# Tenant B accessing their products module
+curl http://localhost:3000/tenant/tenant-xyz/products/
+```
+
+## Isolation Guarantees
+
+Multi-tenant routing enforces strict isolation:
+
+| Scenario | Result |
+|----------|--------|
+| Tenant A requests `/tenant/tenant-abc/orders/` | Loads `user-modules/tenant-abc/orders.wasm` |
+| Tenant A requests `/tenant/tenant-abc/products/` | 404 (no products.wasm in tenant-abc) |
+| Tenant A requests `/tenant/tenant-xyz/products/` | 404 (cannot access other tenant's modules) |
+| Any request to `/run/auth/` | Loads `modules/auth.wasm` (platform) |
+
+:::caution[Security Note]
+Tenant isolation is enforced at the file system level. Each tenant's modules must be in their own subdirectory under `user-modules/`. There is no way for tenant A to load tenant B's modules.
+:::
+
+## Response Headers
+
+Tenant requests include identifying headers:
+
+```http
+HTTP/1.1 200 OK
+X-Request-ID: 550e8400-e29b-41d4-a716-446655440000
+X-Mik-Handler: tenant-abc/orders
+X-Mik-Duration-Ms: 12
+traceparent: 00-abc123...-def456...-01
+```
+
+The `X-Mik-Handler` header shows the full tenant/module path for debugging.
+
+## Gateway API
+
+The gateway API at `/_mik/handlers` includes tenant modules:
+
+```bash
+curl http://localhost:3000/_mik/handlers
+```
+
+```json
+{
+  "data": [
+    {
+      "type": "handler",
+      "id": "auth",
+      "attributes": { "name": "auth" },
+      "links": { "self": "/run/auth/" }
+    },
+    {
+      "type": "handler",
+      "id": "tenant-abc/orders",
+      "attributes": {
+        "name": "orders",
+        "tenant_id": "tenant-abc"
+      },
+      "links": { "self": "/tenant/tenant-abc/orders/" }
+    }
+  ],
+  "meta": {
+    "total": 3,
+    "platform_count": 1,
+    "tenant_count": 2
+  }
+}
+```
+
+## Tenant ID Formats
+
+Tenant IDs can use various formats:
+
+```bash
+# Slug format
+/tenant/acme-corp/orders/
+
+# UUID format
+/tenant/550e8400-e29b-41d4-a716-446655440000/orders/
+
+# Numeric format
+/tenant/12345/orders/
+```
+
+:::note
+Tenant IDs are used directly as directory names. Ensure they are filesystem-safe (no `/`, `\`, `..`, etc.).
+:::
+
+## Circuit Breaker
+
+Each tenant module has independent circuit breaker state. If `tenant-abc/orders` fails repeatedly, it won't affect `tenant-xyz/products`:
+
+```
+# Per-module circuit breaker keys
+tenant:tenant-abc/orders  → [own failure count]
+tenant:tenant-xyz/products → [own failure count]
+```
+
+When a module's circuit breaker opens, requests return:
+
+```http
+HTTP/1.1 503 Service Unavailable
+Retry-After: 30
+Content-Type: application/json
+
+{"error":"Circuit breaker open for 'tenant-abc/orders'","status":503}
+```
+
+## Concurrency Limits
+
+Per-module semaphores also apply independently per tenant:
+
+```toml
+[server]
+max_per_module_requests = 10  # Each tenant module gets this limit
+```
+
+When exceeded:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 5
+Content-Type: application/json
+
+{"error":"Module 'tenant-abc/orders' overloaded (max 10 concurrent)","status":429}
+```
+
+## Caching
+
+Tenant modules use namespaced cache keys:
+
+| Module Type | Cache Key |
+|-------------|-----------|
+| Platform `auth` | `auth` |
+| Tenant `tenant-abc/orders` | `tenant:tenant-abc/orders` |
+
+This ensures tenant modules don't collide in the LRU cache.
+
+## OpenAPI Schemas
+
+Tenant modules can have their own OpenAPI schemas:
+
+```
+user-modules/
+└── tenant-abc/
+    ├── orders.wasm
+    └── orders.openapi.json   # Schema for orders module
+```
+
+Access via gateway:
+
+```bash
+# Platform module schema
+curl http://localhost:3000/openapi/auth
+
+# Tenant module schema (future feature)
+curl http://localhost:3000/openapi/tenant-abc/orders
+```
+
+## Complete Example
+
+### Directory Structure
+
+```
+my-saas/
+├── modules/
+│   └── gateway.wasm
+├── user-modules/
+│   ├── customer-a/
+│   │   ├── api.wasm
+│   │   └── webhooks.wasm
+│   └── customer-b/
+│       └── api.wasm
+└── mik.toml
+```
+
+### Configuration
+
+```toml
+[project]
+name = "my-saas"
+version = "1.0.0"
+
+[server]
+port = 8080
+modules = "modules/"
+user_modules = "user-modules/"
+cache_size = 200
+max_per_module_requests = 20
+execution_timeout_secs = 30
+
+[tracing]
+service_name = "my-saas"
+otlp_endpoint = "http://tempo:4317"
+```
+
+### Usage
+
+```bash
+# Start server
+mik run
+
+# Platform gateway (shared)
+curl http://localhost:8080/run/gateway/health
+
+# Customer A's API
+curl http://localhost:8080/tenant/customer-a/api/v1/data
+
+# Customer A's webhooks
+curl -X POST http://localhost:8080/tenant/customer-a/webhooks/github
+
+# Customer B's API
+curl http://localhost:8080/tenant/customer-b/api/v1/data
+```
+
+## Error Cases
+
+| Error | Status | Cause |
+|-------|--------|-------|
+| Tenant modules not configured | 400 | `user_modules` not set in mik.toml |
+| Invalid tenant path | 404 | Missing tenant-id or module in URL |
+| Module not found | 404 | WASM file doesn't exist for tenant |
+| Cross-tenant access | 404 | Attempting to load another tenant's module |
+
+## Best Practices
+
+1. **Use consistent tenant IDs**: Match your authentication system's tenant identifiers
+2. **Validate tenant IDs**: Ensure IDs are filesystem-safe before creating directories
+3. **Monitor per-tenant**: Use `X-Mik-Handler` header for tenant-specific metrics
+4. **Set appropriate limits**: Configure `max_per_module_requests` based on expected load
+5. **Hot reload**: Changes to tenant modules are picked up automatically with `mik dev`
