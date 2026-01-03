@@ -70,8 +70,8 @@ pub(crate) async fn execute_handler_call(
     // Add Host header (required by WASI HTTP)
     req_builder = req_builder.header("host", "localhost");
 
-    // Add trace ID for distributed tracing
-    req_builder = req_builder.header("x-trace-id", trace_id);
+    // Add traceparent for distributed tracing (W3C Trace Context)
+    req_builder = req_builder.header("traceparent", trace_id);
 
     for (key, value) in &headers {
         req_builder = req_builder.header(key.as_str(), value.as_str());

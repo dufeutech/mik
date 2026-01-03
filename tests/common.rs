@@ -398,13 +398,22 @@ async fn handle_test_request(
     // Generate request ID (matches real runtime behavior)
     let request_id = Uuid::new_v4();
 
-    // Extract trace_id from incoming header, or use request_id as trace_id (matches real runtime)
-    let trace_id = req
+    // Extract traceparent from incoming header, or generate new (W3C Trace Context)
+    let traceparent = if let Some(tp) = req
         .headers()
-        .get("x-trace-id")
+        .get("traceparent")
         .and_then(|v| v.to_str().ok())
-        .map(String::from)
-        .unwrap_or_else(|| request_id.to_string());
+    {
+        tp.to_string()
+    } else {
+        // Generate W3C traceparent format: version-trace_id-parent_id-flags
+        // Use UUID for random generation (trace_id = 32 hex, parent_id = first 16 hex of another UUID)
+        let trace_uuid = Uuid::new_v4();
+        let parent_uuid = Uuid::new_v4();
+        let trace_id = trace_uuid.simple().to_string();
+        let parent_id = &parent_uuid.simple().to_string()[..16];
+        format!("00-{trace_id}-{parent_id}-01")
+    };
 
     // Health endpoint
     if path == "/health" {
@@ -426,7 +435,7 @@ async fn handle_test_request(
             .status(200)
             .header("Content-Type", "application/json")
             .header("X-Request-ID", request_id.to_string())
-            .header("X-Trace-ID", &trace_id)
+            .header("traceparent", &traceparent)
             .body(Full::new(Bytes::from(body.to_string())))
             .unwrap());
     }
@@ -441,7 +450,7 @@ async fn handle_test_request(
             .status(200)
             .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
             .header("X-Request-ID", request_id.to_string())
-            .header("X-Trace-ID", &trace_id)
+            .header("traceparent", &traceparent)
             .body(Full::new(Bytes::from(metrics)))
             .unwrap());
     }

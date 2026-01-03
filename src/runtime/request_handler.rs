@@ -15,6 +15,7 @@ use crate::runtime::schema_handler;
 use crate::runtime::script;
 use crate::runtime::spans::{SpanBuilder, SpanCollector, SpanSummary};
 use crate::runtime::static_files::serve_static_file;
+use crate::runtime::trace_context::extract_trace_context;
 use crate::runtime::types::ErrorCategory;
 use crate::runtime::wasm_executor::execute_wasm_request;
 use crate::runtime::{
@@ -67,11 +68,10 @@ pub async fn handle_request(
     let request_id = Uuid::new_v4();
     let start_time = Instant::now();
 
-    let trace_id = req
-        .headers()
-        .get("x-trace-id")
-        .and_then(|v| v.to_str().ok())
-        .map_or_else(|| request_id.to_string(), String::from);
+    // Extract or generate W3C Trace Context
+    let trace_ctx = extract_trace_context(req.headers());
+    let trace_id = trace_ctx.trace_id().to_string();
+    let traceparent = trace_ctx.to_traceparent();
 
     shared.request_counter.fetch_add(1, Ordering::Relaxed);
 
@@ -97,7 +97,7 @@ pub async fn handle_request(
             &shared,
             &req,
             &request_id,
-            &trace_id,
+            &traceparent,
             start_time,
             client_accepts_gzip,
         );
@@ -106,7 +106,7 @@ pub async fn handle_request(
         return handle_metrics_endpoint(
             &shared,
             &request_id,
-            &trace_id,
+            &traceparent,
             start_time,
             client_accepts_gzip,
         );
@@ -169,15 +169,15 @@ pub async fn handle_request(
         },
     }
 
-    // Add request ID and trace ID to response headers
+    // Add request ID and W3C traceparent to response headers
     result.map(|mut resp| {
         // Safe: UUID::to_string() always produces valid header characters
         if let Ok(header_value) = request_id.to_string().parse() {
             resp.headers_mut().insert("X-Request-ID", header_value);
         }
-        // Add trace ID for distributed tracing
-        if let Ok(header_value) = trace_id.parse() {
-            resp.headers_mut().insert("X-Trace-ID", header_value);
+        // Add W3C traceparent for distributed tracing
+        if let Ok(header_value) = traceparent.parse() {
+            resp.headers_mut().insert("traceparent", header_value);
         }
         resp
     })

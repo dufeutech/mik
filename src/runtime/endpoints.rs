@@ -21,7 +21,7 @@ pub(crate) fn handle_health_endpoint(
     shared: &Arc<SharedState>,
     req: &Request<hyper::body::Incoming>,
     request_id: &Uuid,
-    trace_id: &str,
+    traceparent: &str,
     start_time: Instant,
     client_accepts_gzip: bool,
 ) -> Result<Response<Full<Bytes>>> {
@@ -50,7 +50,7 @@ pub(crate) fn handle_health_endpoint(
         .status(200)
         .header("Content-Type", "application/json")
         .header("X-Request-ID", request_id.to_string())
-        .header("X-Trace-ID", trace_id)
+        .header("traceparent", traceparent)
         .body(Full::new(Bytes::from(body)))?;
 
     Ok(maybe_compress_response(response, client_accepts_gzip))
@@ -60,7 +60,7 @@ pub(crate) fn handle_health_endpoint(
 pub(crate) fn handle_metrics_endpoint(
     shared: &Arc<SharedState>,
     request_id: &Uuid,
-    trace_id: &str,
+    traceparent: &str,
     start_time: Instant,
     client_accepts_gzip: bool,
 ) -> Result<Response<Full<Bytes>>> {
@@ -73,7 +73,7 @@ pub(crate) fn handle_metrics_endpoint(
         .status(200)
         .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
         .header("X-Request-ID", request_id.to_string())
-        .header("X-Trace-ID", trace_id)
+        .header("traceparent", traceparent)
         .body(Full::new(Bytes::from(metrics)))?;
 
     Ok(maybe_compress_response(response, client_accepts_gzip))

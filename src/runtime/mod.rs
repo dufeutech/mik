@@ -71,6 +71,7 @@ pub mod security;
 pub mod server;
 pub mod spans;
 pub mod static_files;
+pub mod trace_context;
 pub mod types;
 pub mod wasm_executor;
 
@@ -424,12 +425,9 @@ impl Runtime {
         let request_id = Uuid::new_v4();
         let path = req.uri().path().to_string();
 
-        // Trace ID from header or generate new
-        let trace_id = req
-            .headers()
-            .get("x-trace-id")
-            .and_then(|v| v.to_str().ok())
-            .map_or_else(|| request_id.to_string(), String::from);
+        // Extract W3C trace context from header or generate new
+        let trace_ctx = trace_context::extract_trace_context(req.headers());
+        let traceparent = trace_ctx.to_traceparent();
 
         self.shared.request_counter.fetch_add(1, Ordering::Relaxed);
 
@@ -451,7 +449,7 @@ impl Runtime {
                 .status(200)
                 .header("Content-Type", "application/json")
                 .header("X-Request-ID", request_id.to_string())
-                .header("X-Trace-ID", &trace_id)
+                .header("traceparent", &traceparent)
                 .body(Full::new(Bytes::from(body)))?;
 
             return Ok(maybe_compress_response(response, client_accepts_gzip));
@@ -464,7 +462,7 @@ impl Runtime {
                 .status(200)
                 .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
                 .header("X-Request-ID", request_id.to_string())
-                .header("X-Trace-ID", &trace_id)
+                .header("traceparent", &traceparent)
                 .body(Full::new(Bytes::from(metrics)))?;
 
             return Ok(maybe_compress_response(response, client_accepts_gzip));
