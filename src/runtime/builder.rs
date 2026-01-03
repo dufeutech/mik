@@ -548,6 +548,29 @@ impl RuntimeBuilder {
         self
     }
 
+    /// Set the user modules directory for multi-tenant routing.
+    ///
+    /// When set, enables `/tenant/<tenant-id>/<module>/` routing.
+    /// Structure: `user_modules_dir/{tenant-id}/{module}.wasm`
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use mik::runtime::Runtime;
+    ///
+    /// # fn example() -> anyhow::Result<()> {
+    /// let runtime = Runtime::builder()
+    ///     .modules_dir("modules/")
+    ///     .user_modules_dir("user-modules/")
+    ///     .build()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn user_modules_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.config.user_modules_path = Some(path.into());
+        self
+    }
+
     /// Set the port (for reference, not used by Runtime directly).
     pub const fn port(mut self, port: u16) -> Self {
         self.config.port = port;

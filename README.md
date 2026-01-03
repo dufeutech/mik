@@ -45,6 +45,7 @@ curl http://localhost:3000/run/my-service/
 - **Embedded Services** - KV, SQL, Storage, Cron built-in
 - **Multi-worker** - Horizontal scaling with load balancer
 - **AOT Compilation** - Fast startup with cached compilation
+- **Multi-tenant Routing** - Isolated tenant modules with `/tenant/<id>/` routing
 - **Shell Completions** - Tab completion for bash, zsh, fish, PowerShell
 
 ## Commands
@@ -58,6 +59,57 @@ mik run --detach      # Run as background instance
 mik ps                # List instances
 mik stop [name]       # Stop instance
 mik completions       # Generate shell completions
+```
+
+## Routing
+
+### Platform Modules
+
+Platform modules are shared across all tenants and accessible via `/run/<module>/`:
+
+```
+modules/
+├── auth.wasm        → /run/auth/*
+├── payments.wasm    → /run/payments/*
+└── notifications.wasm → /run/notifications/*
+```
+
+### Multi-Tenant Routing
+
+Enable tenant isolation by setting `user_modules` in `mik.toml`:
+
+```toml
+[server]
+modules = "modules/"
+user_modules = "user-modules/"
+```
+
+Tenant modules are accessible via `/tenant/<tenant-id>/<module>/`:
+
+```
+user-modules/
+├── acme-corp/
+│   ├── orders.wasm     → /tenant/acme-corp/orders/*
+│   └── inventory.wasm  → /tenant/acme-corp/inventory/*
+└── globex/
+    └── orders.wasm     → /tenant/globex/orders/*
+```
+
+Each tenant can only access their own modules - cross-tenant access returns 404.
+
+## Gateway API
+
+The runtime exposes discovery endpoints for gateway integration:
+
+```bash
+# List all handlers (platform + tenant)
+curl http://localhost:3000/_mik/handlers
+
+# Aggregated OpenAPI spec for platform
+curl http://localhost:3000/_mik/openapi/platform
+
+# Aggregated OpenAPI spec for a tenant
+curl http://localhost:3000/_mik/openapi/tenant/acme-corp
 ```
 
 ## Documentation

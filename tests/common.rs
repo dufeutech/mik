@@ -826,6 +826,8 @@ pub struct RealTestHost {
 pub struct RealTestHostBuilder {
     /// Directory containing .wasm modules.
     modules_dir: PathBuf,
+    /// Directory for user/tenant modules.
+    user_modules_dir: Option<PathBuf>,
     /// Directory for static files.
     static_dir: Option<PathBuf>,
     /// Directory for JS scripts.
@@ -852,6 +854,7 @@ impl Default for RealTestHostBuilder {
 
         Self {
             modules_dir: fixtures_dir,
+            user_modules_dir: None,
             static_dir: None,
             scripts_dir: None,
             execution_timeout_secs: 5, // Short timeout for tests
@@ -890,6 +893,17 @@ impl RealTestHostBuilder {
     #[must_use]
     pub fn with_scripts_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.scripts_dir = Some(path.into());
+        self
+    }
+
+    /// Set the user modules directory for multi-tenant routing.
+    ///
+    /// When set, enables `/tenant/<tenant-id>/<module>/` routing.
+    /// Structure: `user_modules_dir/{tenant-id}/{module}.wasm`
+    #[allow(dead_code)]
+    #[must_use]
+    pub fn with_user_modules_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.user_modules_dir = Some(path.into());
         self
     }
 
@@ -982,6 +996,10 @@ impl RealTestHostBuilder {
 
         if let Some(static_dir) = self.static_dir {
             builder = builder.static_dir(static_dir);
+        }
+
+        if let Some(user_modules_dir) = self.user_modules_dir {
+            builder = builder.user_modules_dir(user_modules_dir);
         }
 
         // Note: scripts_dir is set via manifest, not builder method
