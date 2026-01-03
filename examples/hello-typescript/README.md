@@ -38,4 +38,4 @@ curl http://localhost:3000/run/hello-typescript/
 
 ## See Also
 
-- [Building Components Guide](https://dufeut.github.io/mik/guides/building-components/)
+- [Building Components Guide](https://dufeutech.github.io/mik/guides/building-components/)

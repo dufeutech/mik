@@ -18,7 +18,7 @@ use std::process::Command;
 pub use templates::{Language, Template};
 
 /// OCI reference for the WIT package.
-const WIT_OCI_REF: &str = "ghcr.io/dufeut/mik-sdk-wit";
+const WIT_OCI_REF: &str = "ghcr.io/dufeutech/mik-sdk-wit";
 /// WIT cache filename within the tools directory.
 const WIT_CACHE_FILENAME: &str = "wit/core.wit";
 
@@ -65,7 +65,7 @@ pub async fn execute(options: NewOptions) -> Result<()> {
 
     // Handle GitHub template
     if let Some(ref github_ref) = options.github_template {
-        return github::create_from_github(project_dir, project_name, github_ref);
+        return github::create_from_github(project_dir, project_name, github_ref).await;
     }
 
     // Determine language and template (interactive or from options)
@@ -207,7 +207,7 @@ fn print_next_steps(project_name: &str, lang: Language) {
     }
 
     println!();
-    println!("Documentation: https://dufeut.github.io/mik/guides/building-components/");
+    println!("Documentation: https://dufeutech.github.io/mik/guides/building-components/");
 }
 
 /// Check if running in interactive mode (TTY).

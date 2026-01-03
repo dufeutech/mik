@@ -55,7 +55,7 @@ EXAMPLES:
   mik build -rc                     Release build with composition
   mik run                           Run on port 3000
 
-For more help, see: https://github.com/dufeut/mik";
+For more help, see: https://github.com/dufeutech/mik";
 
 #[derive(Parser)]
 #[command(name = "mik")]
@@ -522,13 +522,25 @@ async fn main() -> Result<()> {
                 .and_then(|s| Language::from_str(s).ok())
                 .unwrap_or_default();
 
-            // Check for GitHub template
-            let github_template = template
-                .as_ref()
-                .filter(|t| t.starts_with("github:") || t.contains('/'))
-                .cloned();
+            // Determine GitHub template:
+            // - Explicit github:user/repo or user/repo → use that
+            // - Explicit embedded template (basic, rest-api) → None
+            // - No template specified → default GitHub template based on language
+            let github_template = if let Some(ref t) = template {
+                if t.starts_with("github:") || t.contains('/') {
+                    Some(t.clone())
+                } else {
+                    None // Explicit embedded template
+                }
+            } else {
+                // Default to GitHub template based on language
+                Some(match lang {
+                    Language::Rust => "dufeutech/mik-handler-template".to_string(),
+                    Language::TypeScript => "dufeutech/mik-handler-template-ts".to_string(),
+                })
+            };
 
-            // Parse template (if not GitHub)
+            // Parse template (only if using embedded)
             let template = if github_template.is_none() {
                 template
                     .as_deref()

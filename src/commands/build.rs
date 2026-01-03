@@ -521,7 +521,7 @@ fn package_to_dist(
 }
 
 /// OCI reference for the bridge component.
-const BRIDGE_OCI_REF: &str = "ghcr.io/dufeut/mik-sdk-bridge";
+const BRIDGE_OCI_REF: &str = "ghcr.io/dufeutech/mik-sdk-bridge";
 
 /// Compose a mik handler with bridge to create a WASI HTTP component.
 ///

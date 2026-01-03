@@ -1,6 +1,6 @@
 [Unit]
 Description=mik WASI HTTP Runtime
-Documentation=https://github.com/dufeut/mik
+Documentation=https://github.com/dufeutech/mik
 After=network-online.target
 Wants=network-online.target
 

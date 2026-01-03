@@ -1,5 +1,5 @@
 # mik installer script for Windows
-# Usage: irm https://raw.githubusercontent.com/dufeut/mik/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/dufeutech/mik/main/install.ps1 | iex
 #
 # Options (via env vars):
 #   $env:MIK_VERSION = "v0.1.0"           Install specific version
@@ -13,7 +13,7 @@ function Write-Success { Write-Host "==> " -ForegroundColor Green -NoNewline; Wr
 function Write-Warn { Write-Host "==> " -ForegroundColor Yellow -NoNewline; Write-Host $args }
 
 function Get-LatestVersion {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/dufeut/mik/releases/latest"
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/dufeutech/mik/releases/latest"
     return $release.tag_name
 }
 
@@ -40,7 +40,7 @@ function Install-Mik {
     }
 
     # Download
-    $url = "https://github.com/dufeut/mik/releases/download/$version/mik-$platform.zip"
+    $url = "https://github.com/dufeutech/mik/releases/download/$version/mik-$platform.zip"
     $zipPath = "$env:TEMP\mik.zip"
     
     Write-Info "Downloading mik $version..."
@@ -48,7 +48,7 @@ function Install-Mik {
         Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
     } catch {
         Write-Host "Error: Failed to download from $url" -ForegroundColor Red
-        Write-Host "Make sure the version exists: https://github.com/dufeut/mik/releases" -ForegroundColor Red
+        Write-Host "Make sure the version exists: https://github.com/dufeutech/mik/releases" -ForegroundColor Red
         exit 1
     }
 

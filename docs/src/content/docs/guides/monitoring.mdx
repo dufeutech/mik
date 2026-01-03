@@ -311,7 +311,7 @@ services:
       - COLLECTOR_OTLP_ENABLED=true
 
   mik:
-    image: ghcr.io/dufeut/mik:latest
+    image: ghcr.io/dufeutech/mik:latest
     environment:
       - RUST_LOG=info
     volumes:
@@ -351,7 +351,7 @@ Complete observability setup with Docker Compose:
 ```yaml
 services:
   mik:
-    image: ghcr.io/dufeut/mik:latest
+    image: ghcr.io/dufeutech/mik:latest
     ports:
       - "3000:3000"
     volumes:

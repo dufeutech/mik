@@ -1,6 +1,6 @@
 [Unit]
 Description=mik Socket Activation
-Documentation=https://github.com/dufeut/mik
+Documentation=https://github.com/dufeutech/mik
 
 [Socket]
 ListenStream=3000

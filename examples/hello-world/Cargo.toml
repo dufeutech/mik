@@ -8,7 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wit-bindgen-rt = "0.44.0"
-mik-sdk = { git = "https://github.com/dufeut/mik-sdk", default-features = false }
+mik-sdk = { git = "https://github.com/dufeutech/mik-sdk", default-features = false }
 
 [package.metadata.component]
 package = "mik:hello-world"

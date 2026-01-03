@@ -157,7 +157,7 @@ The Minimum Supported Rust Version (MSRV) is **1.89**.
 
 If you discover a security vulnerability, please **do not** open a public issue.
 
-Instead, report vulnerabilities through [GitHub Security Advisories](https://github.com/dufeut/mik/security/advisories/new).
+Instead, report vulnerabilities through [GitHub Security Advisories](https://github.com/dufeutech/mik/security/advisories/new).
 
 We take security issues seriously and will respond promptly to verified reports.
 

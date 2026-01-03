@@ -1,6 +1,6 @@
 #!/bin/bash
 # mik installer script
-# Usage: curl -fsSL https://raw.githubusercontent.com/dufeut/mik/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/dufeutech/mik/main/install.sh | bash
 #
 # Options (via env vars):
 #   MIK_VERSION=v0.1.0    Install specific version (default: latest)
@@ -52,7 +52,7 @@ detect_platform() {
 
 # Get latest version from GitHub
 get_latest_version() {
-    curl -fsSL "https://api.github.com/repos/dufeut/mik/releases/latest" \
+    curl -fsSL "https://api.github.com/repos/dufeutech/mik/releases/latest" \
         | grep '"tag_name"' \
         | sed -E 's/.*"([^"]+)".*/\1/'
 }
@@ -66,7 +66,7 @@ install_binary() {
     local ext="tar.gz"
     [[ "$platform" == *"windows"* ]] && ext="zip"
 
-    local url="https://github.com/dufeut/mik/releases/download/${version}/mik-${platform}.${ext}"
+    local url="https://github.com/dufeutech/mik/releases/download/${version}/mik-${platform}.${ext}"
     local tmp_dir
     tmp_dir=$(mktemp -d)
     trap "rm -rf $tmp_dir" EXIT

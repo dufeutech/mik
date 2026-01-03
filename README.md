@@ -8,12 +8,12 @@ A Rust-based CLI tool that serves as the host environment for running portable W
 
 **Linux/macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dufeut/mik/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dufeutech/mik/main/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/dufeut/mik/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/dufeutech/mik/main/install.ps1 | iex
 ```
 
 **Or via cargo:**
@@ -62,7 +62,7 @@ mik completions       # Generate shell completions
 
 ## Documentation
 
-Full documentation: [dufeut.github.io/mik](https://dufeut.github.io/mik)
+Full documentation: [dufeutech.github.io/mik](https://dufeutech.github.io/mik)
 
 ## License
 

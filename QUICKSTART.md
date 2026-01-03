@@ -148,7 +148,7 @@ port = 3000
 modules = "modules/"
 
 [composition]
-http_handler = true  # Auto-downloads bridge from ghcr.io/dufeut/mik-sdk-bridge
+http_handler = true  # Auto-downloads bridge from ghcr.io/dufeutech/mik-sdk-bridge
 
 [dependencies]
 # OCI (ghcr.io is default)
@@ -196,6 +196,6 @@ curl http://localhost:3000/metrics
 
 ## Next Steps
 
-- Read the [mik-sdk documentation](https://github.com/dufeut/mik-sdk)
+- Read the [mik-sdk documentation](https://github.com/dufeutech/mik-sdk)
 - Explore [examples](examples/)
 - Learn about [WASI Preview 2](https://github.com/WebAssembly/WASI/tree/main/preview2)

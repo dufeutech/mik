@@ -304,7 +304,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wit-bindgen-rt = "0.44.0"
-mik-sdk = { git = "https://github.com/dufeut/mik-sdk", default-features = false }
+mik-sdk = { git = "https://github.com/dufeutech/mik-sdk", default-features = false }
 
 [package.metadata.component]
 package = "mik:{{PROJECT_NAME}}"
@@ -567,7 +567,7 @@ handles HTTP protocol details, so your code just processes requests and returns 
 
 ## Documentation
 
-See: https://dufeut.github.io/mik/guides/building-components/
+See: https://dufeutech.github.io/mik/guides/building-components/
 ";
 
 const TS_GITIGNORE_EXTRA: &str = r"node_modules/
@@ -858,7 +858,7 @@ curl -X DELETE http://localhost:3000/run/{{PROJECT_NAME}}/items/<id>
 
 ## Documentation
 
-See: https://dufeut.github.io/mik/guides/building-components/
+See: https://dufeutech.github.io/mik/guides/building-components/
 "#;
 
 #[cfg(test)]

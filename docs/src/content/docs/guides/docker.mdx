@@ -9,10 +9,10 @@ mik is available as a minimal Docker image (~49MB) for containerized deployments
 
 ```bash
 # Pull the image
-docker pull ghcr.io/dufeut/mik
+docker pull ghcr.io/dufeutech/mik
 
 # Run with volume mount
-docker run -v $(pwd):/app -p 3000:3000 ghcr.io/dufeut/mik
+docker run -v $(pwd):/app -p 3000:3000 ghcr.io/dufeutech/mik
 ```
 
 ## Project Structure
@@ -37,7 +37,7 @@ my-project/
 # docker-compose.yml
 services:
   mik:
-    image: ghcr.io/dufeut/mik:latest
+    image: ghcr.io/dufeutech/mik:latest
     ports:
       - "3000:3000"
     volumes:
@@ -51,7 +51,7 @@ services:
 ```yaml
 services:
   mik:
-    image: ghcr.io/dufeut/mik:latest
+    image: ghcr.io/dufeutech/mik:latest
     ports:
       - "3000:3000"
     volumes:
@@ -86,7 +86,7 @@ otlp_endpoint = "http://jaeger:4317"
 ```yaml
 services:
   mik:
-    image: ghcr.io/dufeut/mik:latest
+    image: ghcr.io/dufeutech/mik:latest
     ports:
       - "3000:3000"
     volumes:
@@ -124,7 +124,7 @@ services:
       - mik
 
   mik:
-    image: ghcr.io/dufeut/mik:latest
+    image: ghcr.io/dufeutech/mik:latest
     volumes:
       - ./:/app
     expose:
@@ -165,7 +165,7 @@ The Docker image:
 To include your modules in the image:
 
 ```dockerfile
-FROM ghcr.io/dufeut/mik:latest
+FROM ghcr.io/dufeutech/mik:latest
 
 COPY mik.toml /app/mik.toml
 COPY modules/ /app/modules/
@@ -201,7 +201,7 @@ curl http://localhost:3000/health
 Check that `mik.toml` exists and `modules/` contains `.wasm` files:
 
 ```bash
-docker run --rm -v $(pwd):/app --entrypoint="" ghcr.io/dufeut/mik:latest /mik run
+docker run --rm -v $(pwd):/app --entrypoint="" ghcr.io/dufeutech/mik:latest /mik run
 ```
 
 ### Module not found

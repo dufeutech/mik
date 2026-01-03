@@ -355,7 +355,7 @@ mik build --compose  # Automatically composes with bridge
 1. Configured path in `mik.toml` (`[composition] bridge = "..."`)
 2. `modules/bridge.wasm`
 3. `~/.mik/tools/bridge/latest.wasm`
-4. Auto-download from `ghcr.io/dufeut/mik-sdk-bridge`
+4. Auto-download from `ghcr.io/dufeutech/mik-sdk-bridge`
 
 ---
 
