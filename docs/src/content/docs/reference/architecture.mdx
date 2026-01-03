@@ -19,7 +19,6 @@ flowchart TB
         subgraph Reliability["Reliability Layer"]
             Cache["LRU Cache<br/>(moka)"]
             CB["Circuit Breaker<br/>(per-module)"]
-            RL["Rate Limiter<br/>(global+per-mod)"]
         end
 
         HTTP --> Wasmtime
@@ -41,7 +40,6 @@ flowchart TB
 | Script Runner   | rquickjs    | JavaScript orchestration          |
 | Cache           | moka        | LRU module caching                |
 | Circuit Breaker | custom      | Failure isolation                 |
-| Rate Limiter    | governor    | Request throttling                |
 
 ## Request Flow
 
@@ -50,9 +48,7 @@ flowchart TB
 ```mermaid
 flowchart TD
     A[HTTP Request] --> B{Route Match}
-    B -->|/run/module/*| C[Rate Limit Check]
-    C -->|OK| D[Circuit Breaker Check]
-    C -->|Exceeded| X1[429 Too Many Requests]
+    B -->|/run/module/*| D[Circuit Breaker Check]
     D -->|OPEN| X2[503 Service Unavailable]
     D -->|OK| E{Cache Lookup}
     E -->|Hit| F[Execute WASI Component]

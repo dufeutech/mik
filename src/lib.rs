@@ -141,7 +141,7 @@ pub mod manifest;
 /// Daemon infrastructure and embedded services.
 ///
 /// This module provides infrastructure for the mik daemon including:
-/// - Embedded services (KV, SQL, Storage, Queue)
+/// - Embedded services (KV, SQL, Storage)
 /// - Process management
 /// - State persistence
 ///
@@ -152,7 +152,6 @@ pub mod manifest;
 /// - [`daemon::services::kv`] - Key-value store backed by redb
 /// - [`daemon::services::sql`] - SQLite database for relational data
 /// - [`daemon::services::storage`] - Filesystem-based object storage
-/// - [`daemon::services::queue`] - In-memory message queues with pub/sub
 #[path = "daemon/mod.rs"]
 pub mod daemon;
 

@@ -9,7 +9,7 @@
 
 ## Summary
 
-Handlers access infrastructure (databases, queues, storage, external APIs) exclusively via HTTP calls to sidecar processes. Credentials never enter the WASM sandbox.
+Handlers access infrastructure (databases, storage, external APIs) exclusively via HTTP calls to sidecar processes. Credentials never enter the WASM sandbox.
 
 ---
 
@@ -19,7 +19,6 @@ WASM handlers need to interact with infrastructure:
 - Databases (PostgreSQL, SQLite)
 - Key-value stores (Redis)
 - Object storage (S3, MinIO)
-- Message queues (RabbitMQ, Redis)
 - External APIs (payment processors, email services)
 
 These services require credentials (passwords, API keys, connection strings). We need a pattern that:
@@ -33,14 +32,13 @@ These services require credentials (passwords, API keys, connection strings). We
 How should WASM handlers access infrastructure services while:
 - Never exposing credentials to WASM code
 - Maintaining handler portability across environments
-- Enabling centralized policy enforcement (rate limits, audit logging)
-- Supporting multiple credential backends (env vars, Vault, cloud secrets)
+- Enabling centralized policy enforcement (audit logging)
 
 ---
 
 ## Decision Drivers
 
-1. **Credential isolation** - Secrets must never enter WASM memory
+1. **Credential isolation** - Credentials must never enter WASM memory
 2. **Portability** - Handlers should work across environments without modification
 3. **Policy enforcement** - Centralized place for rate limits, ACLs, audit logs
 4. **Operational simplicity** - Standard HTTP debugging, monitoring, tracing
@@ -115,7 +113,7 @@ Handlers make HTTP calls to sidecar processes. Sidecars hold credentials and pro
 │  │             │           ├── /kv/:key                 │
 │  │ No credentials          ├── /sql/query               │
 │  │ No raw sockets          ├── /storage/:path           │
-│  │ HTTP only               └── /queue/:name/push        │
+│  │ HTTP only                                             │
 │  └─────────────┘                    │                   │
 └─────────────────────────────────────│───────────────────┘
                                       │
@@ -303,8 +301,6 @@ The reference sidecar implementation (`mikcar`) provides:
 | `POST /sql/query` | SQL Query | PostgreSQL/SQLite |
 | `POST /sql/execute` | SQL Execute | PostgreSQL/SQLite |
 | `GET/PUT/DELETE /storage/*path` | Object Storage | S3/MinIO/Local |
-| `POST /queue/:name/push` | Queue Push | RabbitMQ/Redis |
-| `POST /queue/:name/pop` | Queue Pop | RabbitMQ/Redis |
 | `POST /email/send` | Email | SMTP |
 
 ### Configuration
@@ -343,7 +339,6 @@ The sidecar runs as a native process with proper OS-level protections:
 - Use network policies (only handlers can reach it)
 - Enable audit logging
 - Rotate credentials regularly
-- Use secrets management (Vault, cloud secrets)
 
 ### Network Security
 

@@ -1,7 +1,7 @@
 //! Sidecar Test Handler - Tests HTTP calls to all mikcar sidecars
 //!
 //! This handler tests the integration between mik runtime and mikcar sidecars
-//! by making HTTP requests to storage, kv, sql, and queue services.
+//! by making HTTP requests to storage, kv, and sql services.
 //!
 //! Uses the mikrozen SDK for routing and responses.
 
@@ -23,7 +23,6 @@ router! {
     "/test/storage" => test_storage,
     "/test/kv" => test_kv,
     "/test/sql" => test_sql,
-    "/test/queue" => test_queue,
     "/test/sql-script" => test_sql_script,
     "/test/sql-script-rollback" => test_sql_script_rollback,
 }
@@ -32,7 +31,7 @@ fn home(_req: &Request) -> Response {
     ok!({
         "service": "sidecar-test",
         "version": "0.4.0",
-        "endpoints": ["/", "/test/all", "/test/storage", "/test/kv", "/test/sql", "/test/queue", "/test/sql-script", "/test/sql-script-rollback"]
+        "endpoints": ["/", "/test/all", "/test/storage", "/test/kv", "/test/sql", "/test/sql-script", "/test/sql-script-rollback"]
     })
 }
 
@@ -44,16 +43,15 @@ fn test_all(_req: &Request) -> Response {
     let storage = test_storage_inner();
     let kv = test_kv_inner();
     let sql = test_sql_inner();
-    let queue = test_queue_inner();
 
-    let all_success = storage.success && kv.success && sql.success && queue.success;
+    let all_success = storage.success && kv.success && sql.success;
 
     Response {
         status: if all_success { 200 } else { 502 },
         headers: vec![("content-type".into(), "application/json".into())],
         body: Some(format!(
-            r#"{{"test":"all","storage":{},"kv":{},"sql":{},"queue":{},"success":{}}}"#,
-            storage.json, kv.json, sql.json, queue.json, all_success
+            r#"{{"test":"all","storage":{},"kv":{},"sql":{},"success":{}}}"#,
+            storage.json, kv.json, sql.json, all_success
         ).into_bytes()),
     }
 }
@@ -177,45 +175,6 @@ fn test_sql_inner() -> TestResult {
             }
         }
         Err(e) => TestResult::error("sql", &format!("select_error: {e}")),
-    }
-}
-
-// =============================================================================
-// Queue Tests (Redis Streams)
-// =============================================================================
-
-fn test_queue(_req: &Request) -> Response {
-    let result = test_queue_inner();
-    Response {
-        status: if result.success { 200 } else { 502 },
-        headers: vec![("content-type".into(), "application/json".into())],
-        body: Some(result.json.into_bytes()),
-    }
-}
-
-fn test_queue_inner() -> TestResult {
-    // Push
-    let push_body = r#"{"msg":"hello-from-wasm-queue"}"#;
-    let push = http_request("POST", "/queue/push/wasm-test-queue", Some(push_body.as_bytes()));
-    let push_status = match &push {
-        Ok(r) => r.status,
-        Err(e) => return TestResult::error("queue", &format!("push_error: {e}")),
-    };
-
-    // Pop
-    let pop = http_request("GET", "/queue/pop/wasm-test-queue?timeout=1", None);
-    match pop {
-        Ok(r) => {
-            let success = push_status == 200 && r.status == 200;
-            TestResult {
-                success,
-                json: format!(
-                    r#"{{"test":"queue","push_status":{},"pop_status":{},"message":"{}","success":{}}}"#,
-                    push_status, r.status, r.body.replace('"', "\\\""), success
-                ),
-            }
-        }
-        Err(e) => TestResult::error("queue", &format!("pop_error: {e}")),
     }
 }
 

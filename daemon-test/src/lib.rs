@@ -1,7 +1,7 @@
 //! Daemon Test Handler - Tests HTTP calls to mik daemon embedded services
 //!
 //! This handler tests the integration between WASM handlers and the mik daemon
-//! by making HTTP requests to KV, SQL, Storage, Queue, Cron, and Metrics services.
+//! by making HTTP requests to KV, SQL, Storage, Cron, and Metrics services.
 //!
 //! ## Usage
 //!
@@ -14,7 +14,6 @@
 //!    - GET /test/kv       - Test KV service
 //!    - GET /test/sql      - Test SQL service
 //!    - GET /test/storage  - Test Storage service
-//!    - GET /test/queue    - Test Queue service
 //!    - GET /test/cron     - Test Cron service
 //!    - GET /test/metrics  - Test Metrics endpoint
 
@@ -43,7 +42,6 @@ impl Guest for Component {
             "/test/kv" => test_kv(),
             "/test/sql" => test_sql(),
             "/test/storage" => test_storage(),
-            "/test/queue" => test_queue(),
             "/test/cron" => test_cron(),
             "/test/metrics" => test_metrics(),
             "/health" => health_check(),
@@ -83,7 +81,6 @@ fn home() -> (u16, String) {
     "/test/kv",
     "/test/sql",
     "/test/storage",
-    "/test/queue",
     "/test/cron",
     "/test/metrics"
   ]
@@ -118,15 +115,14 @@ fn test_all() -> (u16, String) {
     let kv = test_kv_inner();
     let sql = test_sql_inner();
     let storage = test_storage_inner();
-    let queue = test_queue_inner();
     let cron = test_cron_inner();
     let metrics = test_metrics_inner();
 
-    let all_success = kv.0 && sql.0 && storage.0 && queue.0 && cron.0 && metrics.0;
+    let all_success = kv.0 && sql.0 && storage.0 && cron.0 && metrics.0;
 
     let result = format!(
-        r#"{{"test": "all", "kv": {}, "sql": {}, "storage": {}, "queue": {}, "cron": {}, "metrics": {}, "success": {}}}"#,
-        kv.1, sql.1, storage.1, queue.1, cron.1, metrics.1, all_success
+        r#"{{"test": "all", "kv": {}, "sql": {}, "storage": {}, "cron": {}, "metrics": {}, "success": {}}}"#,
+        kv.1, sql.1, storage.1, cron.1, metrics.1, all_success
     );
 
     (if all_success { 200 } else { 502 }, result)
@@ -270,51 +266,6 @@ fn test_storage_inner() -> (bool, String) {
         Err(e) => (
             false,
             format!(r#"{{"test": "storage", "put": "ok", "get_error": "{}", "success": false}}"#, escape_json(&e)),
-        ),
-    }
-}
-
-// ============================================================================
-// Queue Service Tests
-// ============================================================================
-
-fn test_queue() -> (u16, String) {
-    let (success, json) = test_queue_inner();
-    (if success { 200 } else { 502 }, json)
-}
-
-fn test_queue_inner() -> (bool, String) {
-    // 1. Push to queue
-    let push_body = r#"{"payload": {"msg": "hello-from-wasm-queue"}}"#;
-    let push_result = make_request("POST", "/queues/wasm-test/push", Some(push_body.as_bytes()));
-
-    let push_ok = match &push_result {
-        Ok((status, _)) => *status == 200 || *status == 201,
-        Err(_) => false,
-    };
-
-    if !push_ok {
-        let err = push_result.err().unwrap_or_else(|| "Push failed".to_string());
-        return (false, format!(r#"{{"test": "queue", "push_error": "{}", "success": false}}"#, escape_json(&err)));
-    }
-
-    // 2. Pop from queue
-    let pop_result = make_request("POST", "/queues/wasm-test/pop", None);
-
-    match pop_result {
-        Ok((status, body)) => {
-            let success = status == 200;
-            (
-                success,
-                format!(
-                    r#"{{"test": "queue", "push": "ok", "pop_status": {}, "message": {}, "success": {}}}"#,
-                    status, body, success
-                ),
-            )
-        }
-        Err(e) => (
-            false,
-            format!(r#"{{"test": "queue", "push": "ok", "pop_error": "{}", "success": false}}"#, escape_json(&e)),
         ),
     }
 }

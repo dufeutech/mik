@@ -4,7 +4,6 @@
 //!
 //! - **Circuit Breaker** - Per-key with LRU eviction and half-open recovery
 //! - **Retry** - Backoff strategies via [backon](https://docs.rs/backon)
-//! - **Rate Limiting** - Token bucket via [governor](https://docs.rs/governor)
 //!
 //! ## Circuit Breaker (Check/Record Pattern)
 //!

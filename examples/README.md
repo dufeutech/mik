@@ -67,7 +67,7 @@ These examples demonstrate different layers of the mik architecture:
 |  - Access services via sidecar only                         |
 +-------------------------------------------------------------+
 |  Layer 3: Sidecars (Infrastructure)                         |
-|  - Storage, SQL, KV, Queue services                         |
+|  - Storage, SQL, KV services                                |
 |  - Full network and credential access                       |
 +-------------------------------------------------------------+
 ```

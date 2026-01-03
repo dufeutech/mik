@@ -18,8 +18,8 @@ flowchart LR
             H3[Sandboxed]
         end
         subgraph Sidecar["Sidecar (mikcar)"]
-            C1[Storage, SQL, Queue]
-            C2[Secrets, Email]
+            C1[Storage, SQL, KV]
+            C2[Email]
             C3[Credentials here]
         end
         Script --> Handler --> Sidecar
@@ -88,7 +88,6 @@ export default function(input) {
 - Credential management
 - Native performance
 - Database connections
-- Message queues
 - External APIs
 
 **Current mikcar services**:
@@ -98,8 +97,6 @@ export default function(input) {
 | **Storage** | Local FS, S3               | `/upload`, `/download`, `/delete`         |
 | **SQL**     | SQLite, PostgreSQL         | `/query`, `/execute`, `/transaction`      |
 | **KV**      | In-memory, Redis           | `/get`, `/set`, `/delete`, `/list`        |
-| **Queue**   | In-memory, Redis, RabbitMQ | `/push`, `/pop`, `/publish`, `/subscribe` |
-| **Secrets** | Env, Vault, AWS SM         | `/get`, `/list`                           |
 | **Email**   | SMTP, Resend, SES          | `/send`                                   |
 
 ---
@@ -121,25 +118,6 @@ sequenceDiagram
     Sidecar-->>Handler: { data }
     Handler-->>Host: response
     Host-->>Client: 200 OK
-```
-
-### Async Job (Queue)
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Host
-    participant Handler
-    participant Sidecar as Sidecar (Queue)
-
-    Client->>Host: POST /submit
-    Host->>Handler: instantiate
-    Handler->>Sidecar: POST /push
-    Sidecar-->>Handler: ack
-    Handler-->>Host: { job_id }
-    Host-->>Client: 202 Accepted
-
-    Note over Client,Sidecar: Later: Worker polls /pop, processes job
 ```
 
 ### Script Orchestration
@@ -259,12 +237,8 @@ This architecture follows established patterns from:
 | **Storage**       | File storage (S3, local)      | ✅      |
 | **Database**      | SQL (SQLite, Postgres)        | ✅      |
 | **Cache**         | KV store (Redis, memory)      | ✅      |
-| **Queue**         | Work queues (Redis, RabbitMQ) | ✅      |
-| **Queue**         | Pub/Sub (memory)              | ✅      |
-| **Secrets**       | Secret management             | ✅      |
 | **Email**         | Transactional email           | ✅      |
 | **Reliability**   | Circuit breaker               | ✅      |
-| **Reliability**   | Rate limiting                 | ✅      |
 | **Reliability**   | Graceful shutdown             | ✅      |
 
 ### Future Considerations
