@@ -45,6 +45,7 @@ export default defineConfig({
           label: "Guides",
           items: [
             { label: "Configuration", slug: "guides/configuration" },
+            { label: "Multi-Tenant Routing", slug: "guides/multi-tenant" },
             { label: "Building Components", slug: "guides/building-components" },
             { label: "Docker", slug: "guides/docker" },
             { label: "Daemon Services", slug: "guides/daemon" },
