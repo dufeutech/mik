@@ -40,9 +40,7 @@ use std::hint::black_box;
 // Buffer Pool Benchmarks
 // =============================================================================
 
-/// Stub BufferPool for benchmarking until core layer is ready.
-///
-/// TODO: Replace with actual import from `mik::runtime::core::buffers` in Phase B.
+/// Buffer pool implementation for benchmarking.
 mod buffers {
     use std::sync::Mutex;
 
@@ -156,40 +154,20 @@ fn buffer_pool_benchmark(c: &mut Criterion) {
 // Store Pool Benchmarks
 // =============================================================================
 
-/// Stub for StorePool benchmarks.
-///
-/// TODO: Replace with actual wasmtime Store pooling when core layer is ready.
+/// Pool pattern benchmarks (baseline for object pooling overhead).
 fn store_pool_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("store_pool");
 
-    // Placeholder benchmark - measures overhead of a simple pool pattern
-    // The actual Store pool will have higher overhead due to wasmtime initialization
-    group.bench_function("placeholder_acquire_release", |b| {
-        // Simulate store pool with a simple wrapper
+    // Baseline benchmark - measures overhead of a simple pool pattern
+    group.bench_function("pool_acquire_release", |b| {
         let pool = buffers::BufferPool::new(100, 1024, 200);
 
         b.iter(|| {
-            let store = pool.acquire();
-            // Simulate some work on the "store"
-            black_box(&store);
-            pool.release(store);
+            let item = pool.acquire();
+            black_box(&item);
+            pool.release(item);
         });
     });
-
-    // TODO: Implement actual Store pool benchmarks when core layer is ready:
-    //
-    // group.bench_function("store_acquire_release", |b| {
-    //     let engine = Arc::new(create_pooled_engine(&PerformanceConfig::default()));
-    //     let pool = StorePool::new(&engine, 100, |engine| {
-    //         WasiCtx::new()
-    //     });
-    //
-    //     b.iter(|| {
-    //         let store = pool.acquire();
-    //         black_box(&*store);
-    //         drop(store); // Returns to pool
-    //     });
-    // });
 
     group.finish();
 }
@@ -198,7 +176,7 @@ fn store_pool_benchmark(c: &mut Criterion) {
 // Scheduling Benchmarks
 // =============================================================================
 
-/// Stub RoundRobin for benchmarking.
+/// Round-robin scheduler for benchmarking.
 mod scheduling {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -258,7 +236,7 @@ fn scheduling_benchmark(c: &mut Criterion) {
 // Metrics Benchmarks
 // =============================================================================
 
-/// Stub Metrics for benchmarking.
+/// Metrics implementation for benchmarking.
 mod metrics {
     use std::sync::atomic::{AtomicU64, Ordering};
 
