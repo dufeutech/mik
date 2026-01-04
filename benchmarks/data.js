@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767474009475,
+  "lastUpdate": 1767505850445,
   "repoUrl": "https://github.com/dufeutech/mik",
   "entries": {
     "Rust Benchmarks": [
@@ -1439,6 +1439,246 @@ window.BENCHMARK_DATA = {
             "name": "concurrent/mixed_workload_read_heavy",
             "value": 129585,
             "range": "± 1893",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "23062270+hlop3z@users.noreply.github.com",
+            "name": "hlop3z",
+            "username": "hlop3z"
+          },
+          "committer": {
+            "email": "23062270+hlop3z@users.noreply.github.com",
+            "name": "hlop3z",
+            "username": "hlop3z"
+          },
+          "distinct": true,
+          "id": "df3b895603d3b7c52d26e9f1fd6bfdd63628bb2d",
+          "message": "chore: remove stale Phase B test placeholders\n\n- Delete tests/runtime/ directory (orphaned, never executed)\n- Remove 17 ignored integration tests for unimplemented features\n- Remove duplicate property tests (tests/property_tests.rs is canonical)\n- Clean up Phase B TODO references in runtime benchmarks\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "timestamp": "2026-01-03T23:35:44-06:00",
+          "tree_id": "d6be948398f9e0960861234f18eedae0ce3b2b56",
+          "url": "https://github.com/dufeutech/mik/commit/df3b895603d3b7c52d26e9f1fd6bfdd63628bb2d"
+        },
+        "date": 1767505849656,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "circuit_breaker/check_request_closed",
+            "value": 491,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "circuit_breaker/check_and_record_success",
+            "value": 1825,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "circuit_breaker/check_multiple_keys/10",
+            "value": 5725,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "circuit_breaker/check_multiple_keys/100",
+            "value": 56456,
+            "range": "± 320",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "circuit_breaker/check_multiple_keys/1000",
+            "value": 560266,
+            "range": "± 4623",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "module_cache/cache_hit",
+            "value": 124,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "module_cache/cache_miss",
+            "value": 80,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "module_cache/cache_insert",
+            "value": 6827,
+            "range": "± 1700",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "module_cache/cache_with_eviction",
+            "value": 4834,
+            "range": "± 154",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "script_execution/runtime_create",
+            "value": 215724,
+            "range": "± 817",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "script_execution/eval_simple",
+            "value": 2282,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "script_execution/eval_json_transform",
+            "value": 7780,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "script_execution/eval_function_call",
+            "value": 4107,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "script_execution/script_preprocess",
+            "value": 511,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "concurrent_access/circuit_breaker_concurrent",
+            "value": 471893,
+            "range": "± 6851",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "concurrent_access/module_cache_concurrent",
+            "value": 129400,
+            "range": "± 1545",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_release_single",
+            "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_release_batch/10",
+            "value": 338,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_release_batch/100",
+            "value": 3396,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_release_batch/1000",
+            "value": 34031,
+            "range": "± 99",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_exhausted",
+            "value": 109,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_release_size/1024",
+            "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_release_size/8192",
+            "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "buffer_pool/acquire_release_size/65536",
+            "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "store_pool/pool_acquire_release",
+            "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "scheduling/round_robin_next",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "scheduling/round_robin_workers/2",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "scheduling/round_robin_workers/4",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "scheduling/round_robin_workers/8",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "scheduling/round_robin_workers/16",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "scheduling/round_robin_workers/32",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "metrics/counter_increment",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "metrics/request_lifecycle",
+            "value": 33,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "metrics/counter_concurrent",
+            "value": 84270,
+            "range": "± 1167",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "concurrent/buffer_pool_contention",
+            "value": 91544,
+            "range": "± 1008",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "concurrent/mixed_workload_read_heavy",
+            "value": 82483,
+            "range": "± 1287",
             "unit": "ns/iter"
           }
         ]
